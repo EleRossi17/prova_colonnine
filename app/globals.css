@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+#__next {
+  height: 100%;
+  width: 100%;
+}
+
+/* Mobile-first styles for map components */
+@media (max-width: 1024px) {
+  /* Ensure touch targets are at least 44px for better mobile interaction */
+  input[type="range"] {
+    height: 44px !important;
+    cursor: pointer;
+  }
+  
+  /* Improve select dropdown on mobile */
+  select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+  
+  /* Button minimum touch target */
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  /* Leaflet controls on mobile */
+  .leaflet-control-container {
+    pointer-events: none;
+  }
+  
+  .leaflet-control-container > * {
+    pointer-events: auto;
+  }
+  
+  /* Ensure map markers are touch-friendly */
+  .leaflet-marker-icon {
+    cursor: pointer;
+  }
+  
+  /* Improve popup readability on mobile */
+  .leaflet-popup-content {
+    margin: 8px 12px !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+  }
+  
+  .leaflet-popup-content h3 {
+    font-size: 16px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Optimize map container for mobile */
+  .leaflet-container {
+    font-size: 14px !important;
+  }
+  
+  /* Improve popup positioning on mobile */
+  .leaflet-popup {
+    margin-bottom: 70px !important; /* Account for smaller year slider at bottom */
+  }
+  
+  /* Optimize zoom controls positioning */
+  .leaflet-control-zoom {
+    margin-top: 20px !important;
+  }
+  
+  /* Mobile-friendly scrolling */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Improve mobile performance */
+  .fixed {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  /* Prevent zoom on form inputs */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens */
+  .leaflet-popup-content {
+    margin: 6px 10px !important;
+    font-size: 13px !important;
+  }
+  
+  .leaflet-popup-content h3 {
+    font-size: 15px !important;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 1024px) and (orientation: landscape) {
+  /* Adjust year slider for landscape */
+  #year-slider-container {
+    bottom: 5px !important;
+    left: 7.5vw !important;
+    min-width: 85vw !important;
+    max-width: 85vw !important;
+  }
+}
+
+/* Prevent text selection on map controls */
+.leaflet-control-container * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Improve slider thumb visibility and touch interaction */
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+input[type="range"]::-moz-range-thumb {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Ensure crisp rendering on retina displays */
+  .leaflet-marker-icon,
+  .leaflet-control {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Dark mode optimizations for mobile */
+@media (prefers-color-scheme: dark) and (max-width: 1024px) {
+  /* Ensure good contrast in mobile interfaces */
+  .bg-white {
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+  }
+  
+  .text-gray-800 {
+    color: #f9fafb !important;
+  }
+  
+  .text-gray-700 {
+    color: #d1d5db !important;
+  }
+  
+  .text-gray-600 {
+    color: #9ca3af !important;
+  }
+  
+  .bg-gray-50 {
+    background-color: #374151 !important;
+  }
+  
+  .border-gray-300 {
+    border-color: #4b5563 !important;
+  }
+}
