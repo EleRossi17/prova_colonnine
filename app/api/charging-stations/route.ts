@@ -1,31 +1,14 @@
+import { CosmosClient } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-// NON importare @azure/cosmos al top level!
-// Importazione dinamica per evitare esecuzione al build time
-
-async function getContainer() {
-  // Import dinamico di Cosmos
-  const { CosmosClient } = await import("@azure/cosmos");
-  
+function getContainer() {
   const endpoint = process.env.COSMOS_DB_ENDPOINT;
   const key = process.env.COSMOS_KEY_CHARGING_STATION;
   const dbName = process.env.COSMOS_DB_DATABASE_NAME;
   const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
 
   if (!endpoint || !key || !dbName || !containerName) {
-    const missing = [
-      !endpoint && "COSMOS_DB_ENDPOINT",
-      !key && "COSMOS_KEY_CHARGING_STATION",
-      !dbName && "COSMOS_DB_DATABASE_NAME",
-      !containerName && "COSMOS_DB_CONTAINER_NAME",
-    ].filter(Boolean);
-
-    throw new Error(
-      `❌ Missing Cosmos DB environment variables: ${missing.join(", ")}`
-    );
+    throw new Error("Missing Cosmos DB environment variables");
   }
 
   const client = new CosmosClient({ endpoint, key });
@@ -33,9 +16,10 @@ async function getContainer() {
   return database.container(containerName);
 }
 
+// ======================= GET =======================
 export async function GET(request: NextRequest) {
   try {
-    const container = await getContainer();
+    const container = getContainer();
     const { searchParams } = new URL(request.url);
 
     const year = searchParams.get("year");
@@ -44,7 +28,7 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get("city");
 
     let query = "SELECT * FROM c";
-    const parameters: Array<{ name: string; value: string | number }> = [];
+    const parameters: any[] = [];
     const conditions: string[] = [];
 
     if (year) {
@@ -67,7 +51,6 @@ export async function GET(request: NextRequest) {
     if (conditions.length > 0) {
       query += " WHERE " + conditions.join(" AND ");
     }
-
     query += " ORDER BY c.charging_station";
 
     const { resources: items } = await container.items
@@ -92,9 +75,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// ======================= POST =======================
 export async function POST(request: NextRequest) {
   try {
-    const container = await getContainer();
+    const container = getContainer();
     const body = await request.json();
 
     const requiredFields = [
@@ -125,11 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { resource: createdItem } = await container.items.create(body);
-    
-    return NextResponse.json(
-      { success: true, data: createdItem },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, data: createdItem }, { status: 201 });
   } catch (error) {
     console.error("Error creating charging station:", error);
     return NextResponse.json(
@@ -143,9 +123,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ======================= DELETE =======================
 export async function DELETE(request: NextRequest) {
   try {
-    const container = await getContainer();
+    const container = getContainer();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -161,9 +142,7 @@ export async function DELETE(request: NextRequest) {
       parameters: [{ name: "@id", value: id }],
     };
 
-    const { resources: items } = await container.items
-      .query(querySpec)
-      .fetchAll();
+    const { resources: items } = await container.items.query(querySpec).fetchAll();
 
     if (items.length === 0) {
       return NextResponse.json(
@@ -191,4 +170,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-
