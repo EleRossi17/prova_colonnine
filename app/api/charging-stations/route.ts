@@ -1,172 +1,56 @@
-import { CosmosClient } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 
-// Funzione che restituisce un container se le credenziali esistono
-function getContainer() {
-  const endpoint = process.env.COSMOS_DB_ENDPOINT;
-  const key = process.env.COSMOS_KEY_CHARGING_STATION;
-  const dbName = process.env.COSMOS_DB_DATABASE_NAME;
-  const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
-
-  // 🔹 Se non ci sono variabili, restituisci null invece di crashare
-  if (!endpoint || !key || !dbName || !containerName) {
-    console.warn("⚠️ Cosmos DB not configured — running in mock mode");
-    return null;
+// Funzione per leggere CSV locali (dal filesystem)
+function readCSVFile(fileName: string): string[][] {
+  try {
+    const filePath = path.join(process.cwd(), "app", "api", "charging-stations", "stats", fileName);
+    const data = fs.readFileSync(filePath, "utf-8");
+    const rows = data
+      .trim()
+      .split("\n")
+      .map((line) => line.split(","));
+    return rows;
+  } catch (error) {
+    console.error(`❌ Errore nel leggere ${fileName}:`, error);
+    return [];
   }
-
-  const client = new CosmosClient({ endpoint, key });
-  const database = client.database(dbName);
-  return database.container(containerName);
 }
 
-// ======================= GET =======================
 export async function GET(request: NextRequest) {
-  const container = getContainer();
-
-  // 🔹 Caso senza DB → restituisci mock data per far funzionare la webapp
-  if (!container) {
-    return NextResponse.json({
-      success: true,
-      data: [
-        {
-          id: "mock_station_1",
-          charging_station: "Mock Station",
-          city: "Milano",
-          charging_station_type: "fast",
-          power_kw: 50,
-          monthly_consumption_kwh: 1200,
-        },
-      ],
-      message: "⚠️ Cosmos DB not connected — showing sample data",
-    });
-  }
-
   try {
     const { searchParams } = new URL(request.url);
-    const year = searchParams.get("year");
-    const type = searchParams.get("type");
-    const month = searchParams.get("month");
-    const city = searchParams.get("city");
+    const file = searchParams.get("file") || "charging_stations.csv"; // parametro opzionale ?file=milano_2805.csv
 
-    let query = "SELECT * FROM c";
-    const parameters: any[] = [];
-    const conditions: string[] = [];
+    // Legge il CSV scelto
+    const rows = readCSVFile(file);
 
-    if (year) {
-      conditions.push("c.year = @year");
-      parameters.push({ name: "@year", value: parseInt(year) });
-    }
-    if (type) {
-      conditions.push("c.charging_station_type = @type");
-      parameters.push({ name: "@type", value: type });
-    }
-    if (month) {
-      conditions.push("c.month = @month");
-      parameters.push({ name: "@month", value: month });
-    }
-    if (city) {
-      conditions.push("c.city = @city");
-      parameters.push({ name: "@city", value: city });
-    }
-
-    if (conditions.length > 0) {
-      query += " WHERE " + conditions.join(" AND ");
-    }
-    query += " ORDER BY c.charging_station";
-
-    const { resources: items } = await container.items
-      .query({ query, parameters })
-      .fetchAll();
-
-    return NextResponse.json({
-      success: true,
-      data: items,
-      count: items.length,
-    });
-  } catch (error) {
-    console.error("Error fetching charging stations:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch charging stations" },
-      { status: 500 }
-    );
-  }
-}
-
-// ======================= POST =======================
-export async function POST(request: NextRequest) {
-  const container = getContainer();
-
-  // 🔹 Se non hai DB, simuliamo una risposta positiva
-  if (!container) {
-    const body = await request.json();
-    return NextResponse.json({
-      success: true,
-      data: { ...body, id: "mock_" + Date.now() },
-      message: "⚠️ Cosmos DB not connected — mock record created",
-    });
-  }
-
-  try {
-    const body = await request.json();
-
-    const { resource: createdItem } = await container.items.create(body);
-    return NextResponse.json({ success: true, data: createdItem }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating charging station:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create charging station" },
-      { status: 500 }
-    );
-  }
-}
-
-// ======================= DELETE =======================
-export async function DELETE(request: NextRequest) {
-  const container = getContainer();
-
-  if (!container) {
-    return NextResponse.json({
-      success: true,
-      message: "⚠️ Cosmos DB not connected — nothing deleted (mock mode)",
-    });
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
+    if (rows.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Missing required parameter: id" },
-        { status: 400 }
-      );
-    }
-
-    const querySpec = {
-      query: "SELECT c.id, c.charging_station FROM c WHERE c.id = @id",
-      parameters: [{ name: "@id", value: id }],
-    };
-
-    const { resources: items } = await container.items.query(querySpec).fetchAll();
-
-    if (items.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Charging station not found" },
+        { success: false, message: `File CSV '${file}' vuoto o non trovato.` },
         { status: 404 }
       );
     }
 
-    const item = items[0];
-    await container.item(id, item.charging_station).delete();
+    // Estrai header e dati
+    const [headers, ...dataRows] = rows;
+    const data = dataRows.map((row) => {
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => (obj[h.trim()] = row[i]?.trim() ?? ""));
+      return obj;
+    });
 
     return NextResponse.json({
       success: true,
-      message: "Charging station deleted successfully",
+      count: data.length,
+      data,
+      message: `📊 File '${file}' letto correttamente`,
     });
   } catch (error) {
-    console.error("Error deleting charging station:", error);
+    console.error("❌ Errore nella GET /api/charging-stations/stats:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete charging station" },
+      { success: false, error: "Errore durante la lettura dei CSV", details: String(error) },
       { status: 500 }
     );
   }
