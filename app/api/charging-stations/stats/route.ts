@@ -1,18 +1,48 @@
-import { CosmosClient } from "@azure/cosmos";
+import { CosmosClient, Container } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
 import { ChargingStationStats } from "@/app/types/charging-station";
 
-// Initialize Cosmos DB client
-const cosmosClient = new CosmosClient({
-  endpoint: process.env.COSMOS_DB_ENDPOINT!,
-  key: process.env.COSMOS_KEY_CHARGING_STATION!,
-});
+// Singleton instance - NON inizializzare qui!
+let containerInstance: Container | null = null;
 
-const database = cosmosClient.database(process.env.COSMOS_DB_DATABASE_NAME!);
-const container = database.container(process.env.COSMOS_DB_CONTAINER_NAME!);
+/**
+ * Lazy initialization con singleton pattern
+ * Viene chiamata solo durante le richieste HTTP, non al build time
+ */
+function getContainer(): Container {
+  if (!containerInstance) {
+    const endpoint = process.env.COSMOS_DB_ENDPOINT;
+    const key = process.env.COSMOS_KEY_CHARGING_STATION;
+    const dbName = process.env.COSMOS_DB_DATABASE_NAME;
+    const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
+
+    // Validation
+    if (!endpoint || !key || !dbName || !containerName) {
+      const missing = [
+        !endpoint && "COSMOS_DB_ENDPOINT",
+        !key && "COSMOS_KEY_CHARGING_STATION",
+        !dbName && "COSMOS_DB_DATABASE_NAME",
+        !containerName && "COSMOS_DB_CONTAINER_NAME",
+      ].filter(Boolean);
+
+      throw new Error(
+        `❌ Missing Cosmos DB environment variables: ${missing.join(", ")}`
+      );
+    }
+
+    // Crea il client e il container una sola volta
+    const client = new CosmosClient({ endpoint, key });
+    const database = client.database(dbName);
+    containerInstance = database.container(containerName);
+  }
+
+  return containerInstance;
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const container = getContainer(); // Inizializzazione lazy
+
     // Get all stations for statistics
     const { resources: items } = await container.items
       .query({
