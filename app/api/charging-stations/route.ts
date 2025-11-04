@@ -1,24 +1,32 @@
 import { CosmosClient } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
 
-// Initialize Cosmos DB client
-const cosmosClient = new CosmosClient({
-  endpoint: process.env.COSMOS_DB_ENDPOINT!,
-  key: process.env.COSMOS_KEY_CHARGING_STATION!,
-});
+// Lazy initialization: crea il container solo quando serve
+function getContainer() {
+  const endpoint = process.env.COSMOS_DB_ENDPOINT;
+  const key = process.env.COSMOS_KEY_CHARGING_STATION;
+  const dbName = process.env.COSMOS_DB_DATABASE_NAME;
+  const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
 
-const database = cosmosClient.database(process.env.COSMOS_DB_DATABASE_NAME!);
-const container = database.container(process.env.COSMOS_DB_CONTAINER_NAME!);
+  if (!endpoint || !key || !dbName || !containerName) {
+    throw new Error("❌ Missing Cosmos DB environment variables");
+  }
+
+  const client = new CosmosClient({ endpoint, key });
+  const database = client.database(dbName);
+  return database.container(containerName);
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const container = getContainer();
     const { searchParams } = new URL(request.url);
+
     const year = searchParams.get("year");
     const type = searchParams.get("type");
     const month = searchParams.get("month");
     const city = searchParams.get("city");
 
-    // Build query with optional filters
     let query = "SELECT * FROM c";
     const parameters: any[] = [];
     const conditions: string[] = [];
@@ -27,17 +35,14 @@ export async function GET(request: NextRequest) {
       conditions.push("c.year = @year");
       parameters.push({ name: "@year", value: parseInt(year) });
     }
-
     if (type) {
       conditions.push("c.charging_station_type = @type");
       parameters.push({ name: "@type", value: type });
     }
-
     if (month) {
       conditions.push("c.month = @month");
       parameters.push({ name: "@month", value: month });
     }
-
     if (city) {
       conditions.push("c.city = @city");
       parameters.push({ name: "@city", value: city });
@@ -50,10 +55,7 @@ export async function GET(request: NextRequest) {
     query += " ORDER BY c.charging_station";
 
     const { resources: items } = await container.items
-      .query({
-        query,
-        parameters,
-      })
+      .query({ query, parameters })
       .fetchAll();
 
     return NextResponse.json({
@@ -76,9 +78,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const container = getContainer();
     const body = await request.json();
 
-    // Validate required fields
     const requiredFields = [
       "charging_station",
       "latitude",
@@ -100,23 +102,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate a unique ID if not provided
     if (!body.id) {
       body.id = `station_${Date.now()}_${Math.random()
         .toString(36)
-        .substr(2, 9)}`;
+        .substring(2, 9)}`;
     }
 
-    // Create the item
     const { resource: createdItem } = await container.items.create(body);
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: createdItem,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, data: createdItem }, { status: 201 });
   } catch (error) {
     console.error("Error creating charging station:", error);
     return NextResponse.json(
@@ -132,6 +125,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const container = getContainer();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -142,38 +136,22 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log(`Attempting to delete charging station with id: ${id}`);
-
-    // First, find the item to get its partition key value (charging_station)
     const querySpec = {
       query: "SELECT c.id, c.charging_station FROM c WHERE c.id = @id",
       parameters: [{ name: "@id", value: id }],
     };
 
-    const { resources: items } = await container.items
-      .query(querySpec)
-      .fetchAll();
+    const { resources: items } = await container.items.query(querySpec).fetchAll();
 
     if (items.length === 0) {
-      console.log(`No charging station found with id: ${id}`);
       return NextResponse.json(
-        {
-          success: false,
-          error: "Charging station not found",
-        },
+        { success: false, error: "Charging station not found" },
         { status: 404 }
       );
     }
 
     const item = items[0];
-    const partitionKey = item.charging_station; // This is the partition key value
-
-    console.log(`Deleting item with id: ${id}, partition key: ${partitionKey}`);
-
-    // Delete using id and partition key
-    await container.item(id, partitionKey).delete();
-
-    console.log("✅ Successfully deleted charging station");
+    await container.item(id, item.charging_station).delete();
 
     return NextResponse.json({
       success: true,
@@ -181,30 +159,14 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error deleting charging station:", error);
-
-    let errorMessage = "Failed to delete charging station";
-    let statusCode = 500;
-
-    if (error instanceof Error) {
-      if (error.message.includes("NotFound") || error.message.includes("404")) {
-        errorMessage = "Charging station not found";
-        statusCode = 404;
-      } else if (
-        error.message.includes("Forbidden") ||
-        error.message.includes("403")
-      ) {
-        errorMessage = "Permission denied - check database permissions";
-        statusCode = 403;
-      }
-    }
-
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage,
+        error: "Failed to delete charging station",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: statusCode }
+      { status: 500 }
     );
   }
 }
+
