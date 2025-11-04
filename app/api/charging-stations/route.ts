@@ -1,3 +1,7 @@
+// ⚡ IMPORTANTE: Disabilita il pre-rendering di questa route
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 import { CosmosClient, Container } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
 
