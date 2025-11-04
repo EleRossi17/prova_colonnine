@@ -1,45 +1,42 @@
-import { CosmosClient, Container } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
 import { ChargingStationStats } from "@/app/types/charging-station";
 
-// ⚡ IMPORTANTE: Disabilita il pre-rendering di questa route
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Singleton instance
-let containerInstance: Container | null = null;
+// NON importare @azure/cosmos al top level!
+// Importazione dinamica per evitare esecuzione al build time
 
-function getContainer(): Container {
-  if (!containerInstance) {
-    const endpoint = process.env.COSMOS_DB_ENDPOINT;
-    const key = process.env.COSMOS_KEY_CHARGING_STATION;
-    const dbName = process.env.COSMOS_DB_DATABASE_NAME;
-    const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
+async function getContainer() {
+  // Import dinamico di Cosmos
+  const { CosmosClient } = await import("@azure/cosmos");
+  
+  const endpoint = process.env.COSMOS_DB_ENDPOINT;
+  const key = process.env.COSMOS_KEY_CHARGING_STATION;
+  const dbName = process.env.COSMOS_DB_DATABASE_NAME;
+  const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
 
-    if (!endpoint || !key || !dbName || !containerName) {
-      const missing = [
-        !endpoint && "COSMOS_DB_ENDPOINT",
-        !key && "COSMOS_KEY_CHARGING_STATION",
-        !dbName && "COSMOS_DB_DATABASE_NAME",
-        !containerName && "COSMOS_DB_CONTAINER_NAME",
-      ].filter(Boolean);
+  if (!endpoint || !key || !dbName || !containerName) {
+    const missing = [
+      !endpoint && "COSMOS_DB_ENDPOINT",
+      !key && "COSMOS_KEY_CHARGING_STATION",
+      !dbName && "COSMOS_DB_DATABASE_NAME",
+      !containerName && "COSMOS_DB_CONTAINER_NAME",
+    ].filter(Boolean);
 
-      throw new Error(
-        `❌ Missing Cosmos DB environment variables: ${missing.join(", ")}`
-      );
-    }
-
-    const client = new CosmosClient({ endpoint, key });
-    const database = client.database(dbName);
-    containerInstance = database.container(containerName);
+    throw new Error(
+      `❌ Missing Cosmos DB environment variables: ${missing.join(", ")}`
+    );
   }
 
-  return containerInstance;
+  const client = new CosmosClient({ endpoint, key });
+  const database = client.database(dbName);
+  return database.container(containerName);
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const container = getContainer();
+    const container = await getContainer();
 
     const { resources: items } = await container.items
       .query({
