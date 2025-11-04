@@ -2,13 +2,13 @@ import { CosmosClient, Container } from "@azure/cosmos";
 import { NextRequest, NextResponse } from "next/server";
 import { ChargingStationStats } from "@/app/types/charging-station";
 
-// Singleton instance - NON inizializzare qui!
+// ⚡ IMPORTANTE: Disabilita il pre-rendering di questa route
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Singleton instance
 let containerInstance: Container | null = null;
 
-/**
- * Lazy initialization con singleton pattern
- * Viene chiamata solo durante le richieste HTTP, non al build time
- */
 function getContainer(): Container {
   if (!containerInstance) {
     const endpoint = process.env.COSMOS_DB_ENDPOINT;
@@ -16,7 +16,6 @@ function getContainer(): Container {
     const dbName = process.env.COSMOS_DB_DATABASE_NAME;
     const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
 
-    // Validation
     if (!endpoint || !key || !dbName || !containerName) {
       const missing = [
         !endpoint && "COSMOS_DB_ENDPOINT",
@@ -30,7 +29,6 @@ function getContainer(): Container {
       );
     }
 
-    // Crea il client e il container una sola volta
     const client = new CosmosClient({ endpoint, key });
     const database = client.database(dbName);
     containerInstance = database.container(containerName);
@@ -41,16 +39,14 @@ function getContainer(): Container {
 
 export async function GET(request: NextRequest) {
   try {
-    const container = getContainer(); // Inizializzazione lazy
+    const container = getContainer();
 
-    // Get all stations for statistics
     const { resources: items } = await container.items
       .query({
         query: "SELECT * FROM c",
       })
       .fetchAll();
 
-    // Calculate statistics
     const stats: ChargingStationStats = {
       totalStations: items.length,
       stationsByType: {},
@@ -59,20 +55,16 @@ export async function GET(request: NextRequest) {
       totalConsumption: 0,
     };
 
-    // Group by type and year
     let totalPower = 0;
     let totalConsumption = 0;
 
     items.forEach((station) => {
-      // Count by type
       const type = station.charging_station_type || "unknown";
       stats.stationsByType[type] = (stats.stationsByType[type] || 0) + 1;
 
-      // Count by year
       const year = station.installation_year || station.year;
       stats.stationsByYear[year] = (stats.stationsByYear[year] || 0) + 1;
 
-      // Sum power and consumption
       totalPower += station.power_kw || 0;
       totalConsumption += station.monthly_consumption_kwh || 0;
     });
