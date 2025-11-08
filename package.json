@@ -2,16 +2,12 @@
   "name": "nextjs",
   "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": "20.x"
-  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
-,
   "dependencies": {
     "@azure/cosmos": "^4.4.1",
     "@types/leaflet": "^1.9.19",
