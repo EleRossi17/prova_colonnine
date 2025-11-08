@@ -1,3 +1,5 @@
+// @ts-expect-error - papaparse has no type declarations
+import Papa from "papaparse";
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
 import { promises as fs } from "fs";
