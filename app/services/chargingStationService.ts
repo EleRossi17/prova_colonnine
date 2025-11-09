@@ -11,16 +11,24 @@ interface FetchChargingStationsParams {
   city?: string;
 }
 
+/**
+ * 🔌 Servizio centralizzato per la gestione delle stazioni di ricarica.
+ * Gestisce fetch, creazione, eliminazione e statistiche.
+ */
 export class ChargingStationService {
-  // ✅ Base URL flessibile (funziona in locale e su Vercel)
+  /**
+   * Base URL dinamico:
+   * - in locale → http://localhost:3000/api/charging-stations
+   * - in produzione → https://webappcolonnine.vercel.app/api/charging-stations
+   */
   private static baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL
       ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/charging-stations`
       : "/api/charging-stations";
 
-  /**
-   * 🔹 Fetch all charging stations with optional filters
-   */
+  // --------------------------------------------------------------------
+  // 🔹 FETCH: ottiene tutte le stazioni di ricarica con filtri opzionali
+  // --------------------------------------------------------------------
   static async fetchChargingStations(
     params: FetchChargingStationsParams = {}
   ): Promise<ChargingStationResponse> {
@@ -32,7 +40,9 @@ export class ChargingStationService {
       if (params.month) queryParams.append("month", params.month);
       if (params.city) queryParams.append("city", params.city);
 
-      const url = `${this.baseUrl}${queryParams.toString() ? `?${queryParams}` : ""}`;
+      const url = `${this.baseUrl}${
+        queryParams.toString() ? `?${queryParams}` : ""
+      }`;
 
       console.log("🔗 Fetching charging stations from:", url);
 
@@ -48,12 +58,13 @@ export class ChargingStationService {
 
       const data = await response.json();
 
-      // ✅ Gestione flessibile: supporta sia array diretto che oggetto { data: [] }
+      // ✅ Supporta sia array diretto che oggetto { data: [] }
       const stations = Array.isArray(data) ? data : data.data || [];
 
       return {
         success: true,
         data: stations,
+        count: stations.length,
       };
     } catch (error) {
       console.error("❌ Error fetching charging stations:", error);
@@ -61,19 +72,24 @@ export class ChargingStationService {
         success: false,
         error: "Failed to fetch charging stations",
         data: [],
-      } as ChargingStationResponse;
+        count: 0,
+      };
     }
   }
 
-  /**
-   * 🔹 Fetch aggregated stats for charging stations
-   */
+  // --------------------------------------------------------------------
+  // 🔹 FETCH STATS: ottiene statistiche aggregate sulle stazioni
+  // --------------------------------------------------------------------
   static async fetchChargingStationStats(): Promise<{
     success: boolean;
     data: ChargingStationStats;
   }> {
     try {
-      const statsUrl = this.baseUrl.replace("/api/charging-stations", "/api/charging-stations/stats");
+      const statsUrl = this.baseUrl.replace(
+        "/api/charging-stations",
+        "/api/charging-stations/stats"
+      );
+
       const response = await fetch(statsUrl, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -94,9 +110,9 @@ export class ChargingStationService {
     }
   }
 
-  /**
-   * 🔹 Create a new charging station
-   */
+  // --------------------------------------------------------------------
+  // 🔹 CREATE: aggiunge una nuova stazione di ricarica
+  // --------------------------------------------------------------------
   static async createChargingStation(
     stationData: Partial<ChargingStation>
   ): Promise<{
@@ -127,9 +143,9 @@ export class ChargingStationService {
     }
   }
 
-  /**
-   * 🔹 Delete a charging station by ID
-   */
+  // --------------------------------------------------------------------
+  // 🔹 DELETE: rimuove una stazione di ricarica tramite ID
+  // --------------------------------------------------------------------
   static async deleteChargingStation(id: string): Promise<{
     success: boolean;
     error?: string;
@@ -162,9 +178,9 @@ export class ChargingStationService {
     }
   }
 
-  /**
-   * 🔹 Utility: extract unique values for filters
-   */
+  // --------------------------------------------------------------------
+  // 🔹 UTILITY: estrae valori unici per i filtri (tipo, città, ecc.)
+  // --------------------------------------------------------------------
   static getUniqueValues(
     stations: ChargingStation[],
     field: keyof ChargingStation
@@ -172,6 +188,6 @@ export class ChargingStationService {
     const uniqueValues = [
       ...new Set(stations.map((station) => station[field])),
     ];
-    return uniqueValues.filter((value) => value !== undefined).map(String);
+    return uniqueValues.filter((v) => v !== undefined).map(String);
   }
 }
