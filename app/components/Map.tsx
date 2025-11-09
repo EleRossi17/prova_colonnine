@@ -218,24 +218,25 @@ export default function Map() {
 
     // Handle station deletion - memoized
     const handleStationDelete = useCallback(async (station: ChargingStation) => {
-        if (!window.confirm('Are you sure you want to delete this charging station?')) {
-            return;
+      if (!station.id) {
+        console.warn("⚠️ Cannot delete station without ID:", station);
+        return;
+      }
+    
+      try {
+        const response = await ChargingStationService.deleteChargingStation(station.id);
+        if (response.success) {
+          setChargingStations((prev) => prev.filter((s) => s.id !== station.id));
+          alert("Charging station deleted successfully!");
+        } else {
+          alert("Error deleting charging station: " + (response.error || "Unknown error"));
         }
-
-        try {
-            const response = await ChargingStationService.deleteChargingStation(station.id);
-            if (response.success) {
-                // Remove the station from the list
-                setChargingStations(prev => prev.filter(s => s.id !== station.id));
-                alert('Charging station deleted successfully!');
-            } else {
-                alert('Error deleting charging station: ' + (response.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error deleting charging station:', error);
-            alert('Error deleting charging station. Please try again.');
-        }
+      } catch (error) {
+        console.error("Error deleting charging station:", error);
+        alert("Error deleting charging station. Please try again.");
+      }
     }, []);
+
 
     // Get unique values for filters - memoized
     const availableTypes = useMemo(() => {
