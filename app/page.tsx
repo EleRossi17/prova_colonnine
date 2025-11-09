@@ -1,18 +1,36 @@
 "use client";
+
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+
+// 📍 Import dinamico per evitare errori SSR di Leaflet
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Popup),
+  { ssr: false }
+);
+
 import L from "leaflet";
 
 type Station = {
-  id?: string;
   Title?: string;
   Latitude?: number;
   Longitude?: number;
   anno?: number;
   charging_station_type?: string;
   PowerKW?: number;
-  [key: string]: any;
 };
 
 export default function HomePage() {
@@ -20,7 +38,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 📍 Icona personalizzata per i marker
   const markerIcon = new L.Icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
     iconSize: [30, 30],
@@ -33,7 +50,14 @@ export default function HomePage() {
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const json = await r.json();
-        return Array.isArray(json) ? json : [];
+        console.log("✅ Dati ricevuti:", json);
+
+        // ✅ Forza conversione a numeri
+        return json.map((s: any) => ({
+          ...s,
+          Latitude: parseFloat(s.Latitude),
+          Longitude: parseFloat(s.Longitude),
+        }));
       })
       .then((data) => setRows(data))
       .catch((e) => setError(e.message))
@@ -43,10 +67,10 @@ export default function HomePage() {
   if (loading) return <main className="p-6">⏳ Caricamento mappa...</main>;
   if (error) return <main className="p-6 text-red-600">❌ Errore: {error}</main>;
 
-  // Calcola centro della mappa (prima stazione o default Milano)
+  // 📍 Centro mappa: prima stazione o default Crema
   const center: [number, number] = rows.length
-    ? [rows[0].Latitude || 45.4642, rows[0].Longitude || 9.19]
-    : [45.4642, 9.19];
+    ? [rows[0].Latitude || 45.364, rows[0].Longitude || 9.684]
+    : [45.364, 9.684];
 
   return (
     <main className="p-4">
@@ -55,11 +79,17 @@ export default function HomePage() {
       {rows.length === 0 ? (
         <p>Nessuna colonnina trovata.</p>
       ) : (
-        <MapContainer center={center} zoom={12} scrollWheelZoom={true}>
+        <MapContainer
+          center={center}
+          zoom={13}
+          scrollWheelZoom={true}
+          style={{ height: "80vh", width: "100%" }}
+        >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+
           {rows.map((r, i) =>
             r.Latitude && r.Longitude ? (
               <Marker
@@ -68,7 +98,7 @@ export default function HomePage() {
                 icon={markerIcon}
               >
                 <Popup>
-                  <b>{r.Title || `Stazione #${i + 1}`}</b>
+                  <b>{r.Title}</b>
                   <br />
                   Tipo: {r.charging_station_type}
                   <br />
