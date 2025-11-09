@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 
-// ✅ Import dinamico di `Map` (niente SSR)
-const Map = dynamic(() => import("./Map"), { ssr: false });
+// ✅ Import corretto: percorso completo della mappa
+const Map = dynamic(() => import("./components/map/Map"), { ssr: false });
 
 export default function HomePage() {
   return (
