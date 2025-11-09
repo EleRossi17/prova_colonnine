@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import { Control, DomEvent } from 'leaflet';
 import { ChargingStation, MarkerClusterColors } from '@/app/types/charging-station';
@@ -22,7 +22,7 @@ export default function ChargingStationForm({
 }: ChargingStationFormProps) {
   const map = useMap();
 
-  useEffect(() => {
+  useEffect((): void | (() => void) => {
     if (!isVisible) return;
 
     const formControl = new Control({ position: 'bottomright' });
@@ -78,17 +78,19 @@ export default function ChargingStationForm({
         </div>
       `;
 
-      const form = div.querySelector('#station-form') as HTMLFormElement;
-      const cancelBtn = div.querySelector('#cancel-btn') as HTMLButtonElement;
-
+      // Blocca interazioni sulla mappa durante l’uso del form
       DomEvent.disableClickPropagation(div);
       DomEvent.disableScrollPropagation(div);
 
+      const form = div.querySelector('#station-form') as HTMLFormElement;
+      const cancelBtn = div.querySelector('#cancel-btn') as HTMLButtonElement;
+
+      // 🔹 Gestione submit
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const stationData = {
+        const stationData: Partial<ChargingStation> = {
           Title: (div.querySelector('#station-title') as HTMLInputElement).value,
           city: (div.querySelector('#station-city') as HTMLInputElement).value,
           charging_station_type: (div.querySelector('#station-type') as HTMLSelectElement).value,
@@ -103,6 +105,7 @@ export default function ChargingStationForm({
         onSubmit(stationData);
       });
 
+      // 🔹 Pulsante Cancel
       cancelBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         onClose();
@@ -113,7 +116,10 @@ export default function ChargingStationForm({
 
     formControl.addTo(map);
 
-    return () => formControl.remove();
+    // ✅ Cleanup corretto (TypeScript ora è felice)
+    return () => {
+      formControl.remove();
+    };
   }, [map, colors, position, onSubmit, onClose, isVisible]);
 
   return null;
