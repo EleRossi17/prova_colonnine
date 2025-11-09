@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 // ✅ Import corretto: percorso completo della mappa
-const Map = dynamic(() => import("./components/map/Map"), { ssr: false });
+const Map = dynamic(() => import("./components/Map"), { ssr: false });
 
 export default function HomePage() {
   return (
