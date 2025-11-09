@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 
-// 📍 Import dinamico per evitare errori SSR di Leaflet
+// ✅ Import dinamico: Leaflet viene caricato solo sul client
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
   { ssr: false }
@@ -50,14 +50,13 @@ export default function HomePage() {
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const json = await r.json();
-        console.log("✅ Dati ricevuti:", json);
-
-        // ✅ Forza conversione a numeri
-        return json.map((s: any) => ({
-          ...s,
-          Latitude: parseFloat(s.Latitude),
-          Longitude: parseFloat(s.Longitude),
-        }));
+        return Array.isArray(json)
+          ? json.map((s: any) => ({
+              ...s,
+              Latitude: parseFloat(s.Latitude),
+              Longitude: parseFloat(s.Longitude),
+            }))
+          : [];
       })
       .then((data) => setRows(data))
       .catch((e) => setError(e.message))
@@ -67,7 +66,6 @@ export default function HomePage() {
   if (loading) return <main className="p-6">⏳ Caricamento mappa...</main>;
   if (error) return <main className="p-6 text-red-600">❌ Errore: {error}</main>;
 
-  // 📍 Centro mappa: prima stazione o default Crema
   const center: [number, number] = rows.length
     ? [rows[0].Latitude || 45.364, rows[0].Longitude || 9.684]
     : [45.364, 9.684];
@@ -89,7 +87,6 @@ export default function HomePage() {
             attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-
           {rows.map((r, i) =>
             r.Latitude && r.Longitude ? (
               <Marker
