@@ -1,87 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ChargingStationStats } from "@/app/types/charging-station";
+import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
+import Papa from "papaparse";
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-// NON importare @azure/cosmos al top level!
-// Importazione dinamica per evitare esecuzione al build time
-
-async function getContainer() {
-  // Import dinamico di Cosmos
-  const { CosmosClient } = await import("@azure/cosmos");
-  
-  const endpoint = process.env.COSMOS_DB_ENDPOINT;
-  const key = process.env.COSMOS_KEY_CHARGING_STATION;
-  const dbName = process.env.COSMOS_DB_DATABASE_NAME;
-  const containerName = process.env.COSMOS_DB_CONTAINER_NAME;
-
-  if (!endpoint || !key || !dbName || !containerName) {
-    const missing = [
-      !endpoint && "COSMOS_DB_ENDPOINT",
-      !key && "COSMOS_KEY_CHARGING_STATION",
-      !dbName && "COSMOS_DB_DATABASE_NAME",
-      !containerName && "COSMOS_DB_CONTAINER_NAME",
-    ].filter(Boolean);
-
-    throw new Error(
-      `❌ Missing Cosmos DB environment variables: ${missing.join(", ")}`
-    );
-  }
-
-  const client = new CosmosClient({ endpoint, key });
-  const database = client.database(dbName);
-  return database.container(containerName);
-}
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const container = await getContainer();
+    const filePath = path.join(process.cwd(), "public", "charg_stations.csv");
+    const csvText = await fs.readFile(filePath, { encoding: "utf-8" });
 
-    const { resources: items } = await container.items
-      .query({
-        query: "SELECT * FROM c",
-      })
-      .fetchAll();
+    const cleanText = csvText.replace(/^\uFEFF/, "").trim();
 
-    const stats: ChargingStationStats = {
-      totalStations: items.length,
-      stationsByType: {},
-      stationsByYear: {},
-      averagePower: 0,
-      totalConsumption: 0,
-    };
-
-    let totalPower = 0;
-    let totalConsumption = 0;
-
-    items.forEach((station) => {
-      const type = station.charging_station_type || "unknown";
-      stats.stationsByType[type] = (stats.stationsByType[type] || 0) + 1;
-
-      const year = station.installation_year || station.year;
-      stats.stationsByYear[year] = (stats.stationsByYear[year] || 0) + 1;
-
-      totalPower += station.power_kw || 0;
-      totalConsumption += station.monthly_consumption_kwh || 0;
+    const parsed = Papa.parse(cleanText, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: true,
     });
 
-    stats.averagePower = items.length > 0 ? totalPower / items.length : 0;
-    stats.totalConsumption = totalConsumption;
+    if (!parsed.data || !Array.isArray(parsed.data)) {
+      console.error("⚠️ CSV vuoto o non leggibile:", parsed);
+      return NextResponse.json([], { status: 200 });
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    console.error("Error fetching charging station stats:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch charging station statistics",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    const dataWithIds = parsed.data.map((station: any, index: number) => ({
+      id: station.id || `station-${index}`,
+      Title: station.Title || `Stazione #${index + 1}`,
+      Latitude: parseFloat(station.Latitude) || 0,
+      Longitude: parseFloat(station.Longitude) || 0,
+      anno: parseInt(station.anno) || 2024,
+      charging_station_type: station.charging_station_type || "slow",
+      PowerKW: parseFloat(station.PowerKW) || 0,
+    }));
+
+    return NextResponse.json(dataWithIds, { status: 200 });
+  } catch (err: any) {
+    console.error("❌ Errore durante la lettura/parsing del CSV:", err.message);
+    return NextResponse.json([], { status: 500 });
   }
 }
