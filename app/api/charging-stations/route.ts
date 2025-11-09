@@ -10,10 +10,39 @@ export async function GET() {
     // Legge il file CSV dalla cartella /public
     const csvText = await fs.readFile(filePath, "utf-8");
     // Converte il CSV in JSON
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-    return NextResponse.json(parsed.data, { status: 200 });
+    const parsed = Papa.parse(csvText, { 
+      header: true, 
+      skipEmptyLines: true,
+      dynamicTyping: true 
+    });
+    
+    // Aggiungi un ID univoco a ogni stazione se non esiste
+    const dataWithIds = parsed.data.map((station: any, index: number) => ({
+      ...station,
+      id: station.id || `station-${index}`,
+      // Assicurati che i campi numerici siano numeri
+      Latitude: parseFloat(station.Latitude),
+      Longitude: parseFloat(station.Longitude),
+      PowerKW: parseFloat(station.PowerKW),
+      anno: parseInt(station.anno),
+      // Aggiungi campi aggiuntivi se necessario
+      installation_year: parseInt(station.anno),
+      year: parseInt(station.anno),
+      city: station.city || "Crema", // Default city se non presente
+    }));
+
+    // Restituisci nel formato atteso dal frontend
+    return NextResponse.json({
+      success: true,
+      data: dataWithIds
+    }, { status: 200 });
+    
   } catch (err) {
     const message = err instanceof Error ? err.message : "Errore sconosciuto";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ 
+      success: false,
+      error: message,
+      data: []
+    }, { status: 500 });
   }
 }
