@@ -124,7 +124,7 @@ function ChargingStationMarker({
     });
 
     // Create marker
-    const marker = new L.Marker([station.latitude, station.longitude], {
+    const marker = new L.Marker([station.Latitude, station.Longitude], {
       icon: customIcon,
     });
 
@@ -235,10 +235,10 @@ function ChargingStationMarker({
           margin-bottom: ${isMobile ? '6px' : '8px'};
         ">
           <div>
-            <strong style="color: #2c3e50;">Lat:</strong> ${station.latitude.toFixed(6)}
+            <strong style="color: #2c3e50;">Lat:</strong> ${station.Latitude.toFixed(6)}
           </div>
           <div>
-            <strong style="color: #2c3e50;">Lng:</strong> ${station.longitude.toFixed(6)}
+            <strong style="color: #2c3e50;">Lng:</strong> ${station.Longitude.toFixed(6)}
           </div>
         </div>
         
@@ -298,7 +298,7 @@ function ChargingStationMarker({
       googleMapsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         // Create Google Maps URL with the exact coordinates
-        const googleMapsUrl = `https://www.google.com/maps?q=${station.latitude},${station.longitude}&t=h&z=18`;
+        const googleMapsUrl = `https://www.google.com/maps?q=${station.Latitude},${station.Longitude}&t=h&z=18`;
         // Open in new tab/window
         window.open(googleMapsUrl, '_blank');
       });
