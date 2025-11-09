@@ -16,10 +16,11 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./types"]
   },
   "include": [
-    "types",              // 👈 aggiungi questa riga
+    "types",
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
