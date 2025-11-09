@@ -5,37 +5,45 @@ import Papa from "papaparse";
 
 export async function GET() {
   try {
+    // 📁 Percorso assoluto del file CSV
     const filePath = path.join(process.cwd(), "public", "charg_stations.csv");
-    const csvText = await fs.readFile(filePath, "utf-8");
 
-    const parsed = Papa.parse(csvText, { 
-      header: true, 
+    // 🔍 Leggi il file come UTF-8
+    const csvText = await fs.readFile(filePath, { encoding: "utf-8" });
+
+    // ✅ Pulisci eventuali caratteri nascosti o BOM
+    const cleanText = csvText.replace(/^\uFEFF/, "").trim();
+
+    // 🔄 Parsing CSV → array di oggetti
+    const parsed = Papa.parse(cleanText, {
+      header: true,
       skipEmptyLines: true,
-      dynamicTyping: true 
+      dynamicTyping: true,
     });
 
-    // 🔄 Mappa i dati CSV nel formato desiderato
+    if (!parsed.data || !Array.isArray(parsed.data)) {
+      console.error("⚠️ CSV vuoto o non leggibile:", parsed);
+      return NextResponse.json([], { status: 200 });
+    }
+
+    // 🔁 Conversione e fallback sicuro dei campi
     const dataWithIds = parsed.data.map((station: any, index: number) => ({
       id: station.id || `station-${index}`,
-      charging_station: station.Title || "Unknown",
-      latitude: parseFloat(station.Latitude) || 0,
-      longitude: parseFloat(station.Longitude) || 0,
-      installation_year: parseInt(station.anno) || 2024,
-      year: parseInt(station.anno) || 2024,
-      month: station.month || "January",
-      power_kw: parseFloat(station.PowerKW) || 0,
+      Title: station.Title || `Stazione #${index + 1}`,
+      Latitude: parseFloat(station.Latitude) || 0,
+      Longitude: parseFloat(station.Longitude) || 0,
+      anno: parseInt(station.anno) || 2024,
       charging_station_type: station.charging_station_type || "slow",
-      monthly_consumption_kwh: station.monthly_consumption_kwh || 0,
-      city: station.city || "Crema",
+      PowerKW: parseFloat(station.PowerKW) || 0,
     }));
 
-    // ✅ RESTITUISCI SEMPRE UN ARRAY
+    console.log(`✅ Caricate ${dataWithIds.length} stazioni di ricarica`);
+
+    // ✅ Restituisci sempre un array
     return NextResponse.json(dataWithIds, { status: 200 });
-
-  } catch (err) {
-    console.error("❌ Errore nella lettura del CSV:", err);
-
-    // ✅ Anche in caso di errore, restituisci un array vuoto
+  } catch (err: any) {
+    console.error("❌ Errore durante la lettura/parsing del CSV:", err.message);
+    // ✅ Anche in caso di errore, restituisci array vuoto
     return NextResponse.json([], { status: 500 });
   }
 }
