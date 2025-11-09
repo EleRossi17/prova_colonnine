@@ -23,11 +23,11 @@ export async function GET() {
       // Assicurati che i campi numerici siano numeri
       Latitude: parseFloat(station.Latitude),
       Longitude: parseFloat(station.Longitude),
-      PowerKW: parseFloat(station.PowerKW),
-      anno: parseInt(station.anno),
+      PowerKW: parseFloat(station.PowerKW) || 0,
+      anno: parseInt(station.anno) || 2024,
       // Aggiungi campi aggiuntivi se necessario
-      installation_year: parseInt(station.anno),
-      year: parseInt(station.anno),
+      installation_year: parseInt(station.anno) || 2024,
+      year: parseInt(station.anno) || 2024,
       city: station.city || "Crema", // Default city se non presente
     }));
 
