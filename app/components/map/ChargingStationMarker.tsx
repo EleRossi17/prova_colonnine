@@ -199,7 +199,7 @@ function ChargingStationMarker({
             font-weight: 600;
             color: #495057;
           ">
-            ${station.power_kw} kW
+            ${station.Power_KW} kW
           </div>
         </div>
         
