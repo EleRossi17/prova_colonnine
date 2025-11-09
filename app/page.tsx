@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 // ✅ Import dinamico di `Map` (niente SSR)
-const Map = dynamic(() => import("./map"), { ssr: false });
+const Map = dynamic(() => import("./Map"), { ssr: false });
 
 export default function HomePage() {
   return (
