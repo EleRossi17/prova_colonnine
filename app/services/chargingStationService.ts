@@ -12,7 +12,11 @@ interface FetchChargingStationsParams {
 }
 
 export class ChargingStationService {
-  private static baseUrl = "/api/charging-stations";
+  // ✅ Usa un URL assoluto in produzione, ma resta flessibile in locale
+  private static baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/charging-stations`
+      : "/api/charging-stations";
 
   static async fetchChargingStations(
     params: FetchChargingStationsParams = {}
