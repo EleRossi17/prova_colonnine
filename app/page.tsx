@@ -1,13 +1,13 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
 type Station = {
-  id?: string;
-  nome?: string;
-  indirizzo?: string;
-  lat?: string | number;
-  lon?: string | number;
+  Title?: string;
+  Latitude?: string;
+  Longitude?: string;
+  anno?: string;
+  charging_station_type?: string;
+  PowerKW?: string;
   [key: string]: any;
 };
 
@@ -17,7 +17,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/data")
+    fetch("/api/charging-stations")  // ⬅️ CAMBIATO DA /api/data
       .then((r) => r.json())
       .then((json) => {
         if (json?.error) throw new Error(json.error);
@@ -33,17 +33,16 @@ export default function HomePage() {
   return (
     <main className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">⚡ Stazioni di Ricarica</h1>
-
       {rows.length === 0 ? (
         <p>Nessuna stazione trovata nel file CSV.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((r, i) => (
             <li key={i} className="border rounded p-3 shadow-sm">
-              <div className="font-medium">{r.nome || r.name || `Stazione #${i + 1}`}</div>
+              <div className="font-medium">{r.Title || `Stazione #${i + 1}`}</div>
               <div className="text-sm opacity-80">
-                {r.indirizzo || r.address || "Indirizzo non disponibile"}
-                {r.lat && r.lon ? ` — (${r.lat}, ${r.lon})` : ""}
+                {r.charging_station_type} - {r.PowerKW}kW - Anno: {r.anno}
+                {r.Latitude && r.Longitude ? ` — (${r.Latitude}, ${r.Longitude})` : ""}
               </div>
             </li>
           ))}
