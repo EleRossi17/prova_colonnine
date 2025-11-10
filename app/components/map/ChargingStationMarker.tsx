@@ -36,6 +36,12 @@ function ChargingStationMarker({ station, colors, onDelete }: ChargingStationMar
         : { size: 20, fontSize: 14 };
     };
 
+    const markerSymbol =
+      station.charging_station_type === 'ultrafast' ? 'U' :
+      station.charging_station_type === 'fast' ? 'F' :
+      station.charging_station_type === 'slow' ? 'S' : 'C';
+
+
     const displaySymbol =
       station.charging_station_type === 'ultrafast' ? '⚡' :
       station.charging_station_type === 'fast' ? '⚡' :
