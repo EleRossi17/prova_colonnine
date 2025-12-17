@@ -1,8 +1,8 @@
 'use client';
-
+// @ts-ignore - Turf types issue with Next.js 15
+import * as turf from '@turf/turf';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import * as turf from '@turf/turf';
 import { ChargingStation, MarkerClusterColors } from '@/app/types/charging-station';
 import { ChargingStationService } from '@/app/services/chargingStationService';
 
