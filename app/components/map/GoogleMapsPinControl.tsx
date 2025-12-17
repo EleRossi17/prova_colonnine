@@ -16,9 +16,20 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
   const pinRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Solo tasto sinistro
+    if (e.button !== 0) return;
+
     e.preventDefault();
+    e.stopPropagation();
+
     setIsDragging(true);
     setDragPosition({ x: e.clientX, y: e.clientY });
+
+    // 🔒 Disabilita il drag/pan della mappa mentre trascini
+    map.dragging.disable();
+    map.scrollWheelZoom.disable();
+    map.doubleClickZoom.disable();
+    map.boxZoom.disable();
   };
 
   useEffect(() => {
@@ -32,6 +43,12 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
       if (!isDragging || !dragPosition) return;
 
       setIsDragging(false);
+
+      // ✅ Riabilita interazioni mappa
+      map.dragging.enable();
+      map.scrollWheelZoom.enable();
+      map.doubleClickZoom.enable();
+      map.boxZoom.enable();
 
       const mapContainer = map.getContainer();
       const rect = mapContainer.getBoundingClientRect();
@@ -64,6 +81,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
+    // ⚠️ IMPORTANTE: NIENTE dragPosition QUI
   }, [isDragging, map, dragPosition]);
 
   useEffect(() => {
@@ -98,7 +116,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           zIndex: 1000,
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : 'all 0.2s ease',
-          opacity: isDragging ? 0.3 : 1,
+          opacity: isDragging ? 0.4 : 1,
           pointerEvents: 'auto',
         }}
       >
@@ -153,15 +171,14 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
               pointerEvents: 'none',
               fontSize: '56px',
               filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))',
-              // Piedi quasi sul punto esatto
-              transform: 'translate(-50%, -95%)',
+              transform: 'translate(-50%, -95%)', // piedi quasi sul punto
               animation: 'bounce 0.5s ease infinite',
             }}
           >
             🚶
           </div>
 
-          {/* 🔍 Mirino MOLTO piccolo e preciso */}
+          {/* Mirino piccolo e preciso */}
           <div
             style={{
               position: 'fixed',
@@ -178,7 +195,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
               boxShadow: '0 0 3px rgba(0,0,0,0.6)',
             }}
           >
-            {/* crocetta */}
             <div
               style={{
                 position: 'absolute',
@@ -201,7 +217,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
                 backgroundColor: colors.city_border,
               }}
             />
-            {/* puntino centrale */}
             <div
               style={{
                 position: 'absolute',
@@ -217,9 +232,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           </div>
         </>
       )}
-
-      {/* 🔥 RIMOSSO l’overlay grigio a schermo intero per non disturbare
-          (se ti piace tenerlo, puoi riaggiungerlo ma è quello che dava “area troppo grande”) */}
 
       <style>{`
         @keyframes bounce {
