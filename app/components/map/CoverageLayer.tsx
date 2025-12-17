@@ -15,77 +15,12 @@ type CoverageLayerProps = {
 export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerProps) {
   const map = useMap();
 
-  // 1️⃣ Crea cerchi intorno a ogni colonnina
-  const stationBuffers = useMemo(() => {
-    if (!stations.length) return null;
-
-    const buffers = stations.map((station) => {
-      const point = turf.point([station.Longitude, station.Latitude]);
-      // Buffer di 500m (0.5 km) - zona ben coperta
-      return turf.buffer(point, 0.5, { units: 'kilometers' });
-    });
-
-    // Unisce tutti i buffer in un unico poligono
-    const union = buffers.reduce((acc, buf) => {
-      if (!acc) return buf;
-      return turf.union(acc, buf);
-    }, buffers[0]);
-
-    return union;
-  }, [stations]);
-
-  // 2️⃣ Calcola le zone scoperte (città - buffer)
-  const uncoveredArea = useMemo(() => {
-    if (!stationBuffers) return null;
-
-    try {
-      // Differenza tra il poligono città e i buffer delle colonnine
-      const difference = turf.difference(cityPolygon, stationBuffers);
-      return difference;
-    } catch (error) {
-      console.error('Error calculating uncovered area:', error);
-      return null;
-    }
-  }, [cityPolygon, stationBuffers]);
-
-  // 3️⃣ Calcola zone parzialmente coperte (500m - 2km)
-  const partialCoverage = useMemo(() => {
-    if (!stations.length) return null;
-
-    const partialBuffers = stations.map((station) => {
-      const point = turf.point([station.Longitude, station.Latitude]);
-      const outer = turf.buffer(point, 2, { units: 'kilometers' });
-      const inner = turf.buffer(point, 0.5, { units: 'kilometers' });
-      
-      try {
-        return turf.difference(outer, inner);
-      } catch {
-        return outer;
-      }
-    });
-
-    const union = partialBuffers.reduce((acc, buf) => {
-      if (!acc || !buf) return buf || acc;
-      try {
-        return turf.union(acc, buf);
-      } catch {
-        return acc;
-      }
-    }, partialBuffers[0]);
-
-    // Interseca con il poligono città
-    try {
-      return turf.intersect(cityPolygon, union);
-    } catch {
-      return union;
-    }
-  }, [stations, cityPolygon]);
-
-  // 4️⃣ Fit bounds alla città quando viene attivato il layer
+  // 1️⃣ Fit bounds alla città quando viene attivato il layer
   useEffect(() => {
     if (cityPolygon) {
       try {
         const bbox = turf.bbox(cityPolygon);
+        console.log('📍 Fitting bounds to city:', bbox);
         map.fitBounds([
           [bbox[1], bbox[0]],
           [bbox[3], bbox[2]]
@@ -96,31 +31,145 @@ export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerPr
     }
   }, [cityPolygon, map]);
 
+  // 2️⃣ Crea cerchi intorno a ogni colonnina (buffer 500m)
+  const stationBuffers = useMemo(() => {
+    if (!stations || stations.length === 0) {
+      console.log('⚠️ Nessuna stazione da mostrare');
+      return null;
+    }
+
+    console.log('🔵 Creando buffer per', stations.length, 'stazioni');
+
+    try {
+      const buffers = stations.map((station) => {
+        const point = turf.point([station.Longitude, station.Latitude]);
+        return turf.buffer(point, 0.5, { units: 'kilometers' });
+      });
+
+      // Unisce tutti i buffer in un unico poligono
+      let union = buffers[0];
+      for (let i = 1; i < buffers.length; i++) {
+        try {
+          union = turf.union(union, buffers[i]);
+        } catch (e) {
+          console.warn('Errore unione buffer', i, e);
+        }
+      }
+
+      console.log('✅ Buffer creati e uniti');
+      return union;
+    } catch (error) {
+      console.error('Errore creazione buffer:', error);
+      return null;
+    }
+  }, [stations]);
+
+  // 3️⃣ Calcola zone parzialmente coperte (500m - 2km)
+  const partialCoverage = useMemo(() => {
+    if (!stations || stations.length === 0) return null;
+
+    console.log('🟡 Creando zone parziali');
+
+    try {
+      const partialBuffers = stations.map((station) => {
+        const point = turf.point([station.Longitude, station.Latitude]);
+        const outer = turf.buffer(point, 2, { units: 'kilometers' });
+        const inner = turf.buffer(point, 0.5, { units: 'kilometers' });
+        
+        try {
+          return turf.difference(outer, inner);
+        } catch {
+          return outer;
+        }
+      });
+
+      let union = partialBuffers[0];
+      for (let i = 1; i < partialBuffers.length; i++) {
+        if (partialBuffers[i]) {
+          try {
+            union = turf.union(union, partialBuffers[i]);
+          } catch (e) {
+            console.warn('Errore unione partial buffer', i);
+          }
+        }
+      }
+
+      // Interseca con il poligono città
+      try {
+        const result = turf.intersect(cityPolygon, union);
+        console.log('✅ Zone parziali create');
+        return result;
+      } catch (e) {
+        console.warn('Errore intersezione città/partial:', e);
+        return union;
+      }
+    } catch (error) {
+      console.error('Errore creazione zone parziali:', error);
+      return null;
+    }
+  }, [stations, cityPolygon]);
+
+  // 4️⃣ Calcola le zone scoperte (città - buffer)
+  const uncoveredArea = useMemo(() => {
+    if (!stationBuffers) {
+      console.log('⚠️ Nessun buffer per calcolare zone scoperte');
+      return null;
+    }
+
+    console.log('🔴 Creando zone scoperte');
+
+    try {
+      const difference = turf.difference(cityPolygon, stationBuffers);
+      console.log('✅ Zone scoperte create');
+      return difference;
+    } catch (error) {
+      console.error('Errore calcolo zone scoperte:', error);
+      return null;
+    }
+  }, [cityPolygon, stationBuffers]);
+
+  console.log('🗺️ Rendering CoverageLayer:', {
+    cityPolygon: !!cityPolygon,
+    stations: stations.length,
+    stationBuffers: !!stationBuffers,
+    partialCoverage: !!partialCoverage,
+    uncoveredArea: !!uncoveredArea
+  });
+
   return (
     <>
-      {/* Perimetro città */}
-      <GeoJSON
-        data={cityPolygon}
-        style={{
-          color: '#2E86AB',
-          weight: 3,
-          opacity: 0.8,
-          fillOpacity: 0,
-          dashArray: '5, 10'
-        }}
-      />
+      {/* Perimetro città - SEMPRE visibile */}
+      {cityPolygon && (
+        <GeoJSON
+          key={`city-${JSON.stringify(cityPolygon.geometry.coordinates[0][0])}`}
+          data={cityPolygon}
+          style={{
+            color: '#2E86AB',
+            weight: 3,
+            opacity: 0.8,
+            fillOpacity: 0,
+            dashArray: '10, 10'
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Perimetro città renderizzato');
+          }}
+        />
+      )}
 
       {/* Zone ben coperte (verde) */}
       {stationBuffers && (
         <GeoJSON
-          key={`covered-${stations.length}`}
+          key={`covered-${stations.length}-${Date.now()}`}
           data={stationBuffers}
           style={{
             color: '#00aa00',
-            weight: 1,
-            opacity: 0.6,
+            weight: 2,
+            opacity: 0.7,
             fillColor: '#00aa00',
             fillOpacity: 0.3
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone verdi renderizzate');
           }}
         />
       )}
@@ -128,7 +177,7 @@ export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerPr
       {/* Zone parzialmente coperte (giallo) */}
       {partialCoverage && (
         <GeoJSON
-          key={`partial-${stations.length}`}
+          key={`partial-${stations.length}-${Date.now()}`}
           data={partialCoverage}
           style={{
             color: '#ffcc00',
@@ -137,13 +186,16 @@ export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerPr
             fillColor: '#ffcc00',
             fillOpacity: 0.25
           }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone gialle renderizzate');
+          }}
         />
       )}
 
       {/* Zone scoperte (rosso) */}
       {uncoveredArea && (
         <GeoJSON
-          key={`uncovered-${stations.length}`}
+          key={`uncovered-${stations.length}-${Date.now()}`}
           data={uncoveredArea}
           style={{
             color: '#ff0000',
@@ -151,6 +203,9 @@ export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerPr
             opacity: 0.6,
             fillColor: '#ff0000',
             fillOpacity: 0.2
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone rosse renderizzate');
           }}
         />
       )}
