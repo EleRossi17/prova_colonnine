@@ -10,52 +10,67 @@ type GoogleMapsPinControlProps = {
 
 export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlProps) {
   const map = useMap();
+
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // per avere sempre l'ultima posizione nel mouseup senza ri-creare i listener
+  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
   const pinRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Solo tasto sinistro
+    // solo tasto sinistro
     if (e.button !== 0) return;
 
     e.preventDefault();
     e.stopPropagation();
 
+    const startPos = { x: e.clientX, y: e.clientY };
     setIsDragging(true);
-    setDragPosition({ x: e.clientX, y: e.clientY });
+    setDragPosition(startPos);
+    dragPosRef.current = startPos;
 
-    // 🔒 Disabilita il drag/pan della mappa mentre trascini
+    // disabilita interazioni della mappa durante il drag
     map.dragging.disable();
     map.scrollWheelZoom.disable();
     map.doubleClickZoom.disable();
     map.boxZoom.disable();
   };
 
+  // listener globali per mousemove / mouseup
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      setDragPosition({ x: e.clientX, y: e.clientY });
+      const pos = { x: e.clientX, y: e.clientY };
+      setDragPosition(pos);
+      dragPosRef.current = pos;
     };
 
     const handleMouseUp = () => {
-      if (!isDragging || !dragPosition) return;
+      if (!isDragging) return;
 
       setIsDragging(false);
 
-      // ✅ Riabilita interazioni mappa
+      // riabilita interazioni mappa
       map.dragging.enable();
       map.scrollWheelZoom.enable();
       map.doubleClickZoom.enable();
       map.boxZoom.enable();
 
+      const lastPos = dragPosRef.current;
+      dragPosRef.current = null;
+      setDragPosition(null);
+
+      if (!lastPos) return;
+
+      const { x, y } = lastPos;
+
       const mapContainer = map.getContainer();
       const rect = mapContainer.getBoundingClientRect();
 
-      const { x, y } = dragPosition;
-
-      // Il punto esatto è il cursore (dragPosition)
+      // controlla se il punto è sopra la mappa
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
         const containerPoint = map.containerPointToLatLng([
           x - rect.left,
@@ -70,8 +85,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
         const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&ll=${lat},${lng}&z=18`;
         window.open(googleMapsUrl, '_blank');
       }
-
-      setDragPosition(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -81,9 +94,9 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-    // ⚠️ IMPORTANTE: NIENTE dragPosition QUI
-  }, [isDragging, map, dragPosition]);
+  }, [isDragging, map]);
 
+  // blocca selezione testo + cambia cursore durante il drag
   useEffect(() => {
     if (isDragging) {
       document.body.style.userSelect = 'none';
@@ -101,7 +114,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
 
   return (
     <>
-      {/* Omino di controllo fisso */}
+      {/* Omino di controllo fisso in basso a destra */}
       <div
         ref={pinRef}
         onMouseDown={handleMouseDown}
@@ -110,9 +123,9 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
         className="leaflet-control"
         style={{
           position: 'absolute',
-          top: '50%',
+          bottom: '20px',
           right: '20px',
-          transform: 'translateY(-50%)',
+          transform: 'none',
           zIndex: 1000,
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : 'all 0.2s ease',
@@ -123,13 +136,13 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
         <div
           className="flex flex-col items-center gap-2"
           style={{
-            transform: isHovering && !isDragging ? 'scale(1.1)' : 'scale(1)',
+            transform: isHovering && !isDragging ? 'scale(1.05)' : 'scale(1)',
             transition: 'transform 0.2s ease',
           }}
         >
           <div
             style={{
-              fontSize: '56px',
+              fontSize: '44px',
               lineHeight: 1,
               userSelect: 'none',
               filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
@@ -139,29 +152,29 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           </div>
 
           <div
-            className="text-center px-3 py-1 rounded-lg shadow-md"
+            className="text-center px-2 py-1 rounded-lg shadow-md"
             style={{
               backgroundColor: 'white',
               border: `2px solid ${colors.city_border}`,
             }}
           >
             <div
-              className="text-xs font-bold"
+              className="text-[10px] font-bold"
               style={{ color: colors.city_border }}
             >
               Google Maps
             </div>
-            <div className="text-[10px] text-gray-500 whitespace-nowrap">
+            <div className="text-[9px] text-gray-500 whitespace-nowrap">
               Trascina sulla mappa
             </div>
           </div>
         </div>
       </div>
 
-      {/* Omino + mirino durante il drag */}
+      {/* Omino + mirino che seguono il cursore durante il drag */}
       {isDragging && dragPosition && (
         <>
-          {/* Omino che segue il cursore */}
+          {/* Omino “attaccato” al punto */}
           <div
             style={{
               position: 'fixed',
@@ -169,16 +182,17 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
               top: dragPosition.y,
               zIndex: 9999,
               pointerEvents: 'none',
-              fontSize: '56px',
+              fontSize: '44px',
               filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))',
-              transform: 'translate(-50%, -95%)', // piedi quasi sul punto
+              // piedi quasi esattamente sul punto
+              transform: 'translate(-50%, -95%)',
               animation: 'bounce 0.5s ease infinite',
             }}
           >
             🚶
           </div>
 
-          {/* Mirino piccolo e preciso */}
+          {/* Mirino piccolo, centrato sul punto esatto usato per lat/lng */}
           <div
             style={{
               position: 'fixed',
@@ -195,6 +209,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
               boxShadow: '0 0 3px rgba(0,0,0,0.6)',
             }}
           >
+            {/* crocetta */}
             <div
               style={{
                 position: 'absolute',
@@ -217,6 +232,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
                 backgroundColor: colors.city_border,
               }}
             />
+            {/* puntino centrale */}
             <div
               style={{
                 position: 'absolute',
@@ -233,6 +249,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
         </>
       )}
 
+      {/* animazione omino */}
       <style>{`
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
