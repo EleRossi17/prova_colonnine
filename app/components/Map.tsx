@@ -81,9 +81,9 @@ export default function Map() {
   // 🆕 Colori per la copertura territorio (evitando semaforo)
   const coverageColors = useMemo(
     () => ({
-      excellent: '#4A90E2',  // Blu - ottima copertura
-      good: '#7B68EE',       // Viola - buona copertura  
-      poor: '#FFA07A'        // Arancione chiaro - scarsa copertura
+      excellent: '#10B981',  // Verde smeraldo - ottima copertura
+      good: '#8B5CF6',       // Viola intenso - buona copertura  
+      poor: '#F59E0B'        // Ambra/arancione - scarsa copertura
     }),
     []
   );
@@ -457,7 +457,7 @@ export default function Map() {
               className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
               style={{ 
                 backgroundColor: currentCityPolygon ? coverageColors.excellent : '#d1d5db',
-                borderColor: currentCityPolygon ? '#3A7BC8' : '#9ca3af'
+                borderColor: currentCityPolygon ? '#059669' : '#9ca3af'
               }}
             />
             <div className="flex-1">
@@ -475,7 +475,7 @@ export default function Map() {
               className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
               style={{ 
                 backgroundColor: currentCityPolygon ? coverageColors.good : '#d1d5db',
-                borderColor: currentCityPolygon ? '#6B58CE' : '#9ca3af'
+                borderColor: currentCityPolygon ? '#7C3AED' : '#9ca3af'
               }}
             />
             <div className="flex-1">
@@ -493,7 +493,7 @@ export default function Map() {
               className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
               style={{ 
                 backgroundColor: currentCityPolygon ? coverageColors.poor : '#d1d5db',
-                borderColor: currentCityPolygon ? '#FF8C5A' : '#9ca3af'
+                borderColor: currentCityPolygon ? '#D97706' : '#9ca3af'
               }}
             />
             <div className="flex-1">
