@@ -38,7 +38,7 @@ const YearPicker = dynamic(() => import('./map/YearPicker'), { ssr: false });
 const AddStationControl = dynamic(() => import('./map/AddStationControl'), { ssr: false });
 const ChargingStationForm = dynamic(() => import('./map/ChargingStationForm'), { ssr: false });
 
-// 🆕 Layer della copertura territorio
+// Layer della copertura territorio
 const CoverageLayer = dynamic(() => import('./map/CoverageLayer'), { ssr: false });
 
 export default function Map() {
@@ -58,9 +58,12 @@ export default function Map() {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // 🆕 Heatmap state
+  // Heatmap state
   const [showCoverage, setShowCoverage] = useState<boolean>(false);
   const [cityBoundaries, setCityBoundaries] = useState<Record<string, any>>({});
+
+  // Debug info
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Color palette
   const colors: MarkerClusterColors = useMemo(
@@ -100,19 +103,26 @@ export default function Map() {
     };
   }, []);
 
-  // 🆕 Carica i poligoni città da /public/city_boundaries.json
+  // Carica i poligoni città da /public/city_boundaries.json
   useEffect(() => {
     const loadCityBoundaries = async () => {
       try {
+        setDebugInfo('🔄 Caricamento city_boundaries.json...');
         const res = await fetch('/city_boundaries.json');
+        
         if (!res.ok) {
+          setDebugInfo(`❌ File non trovato (status ${res.status})`);
           console.warn('city_boundaries.json non trovato o non accessibile');
           return;
         }
+        
         const data = await res.json();
+        console.log('✅ City boundaries caricati:', Object.keys(data));
         setCityBoundaries(data);
+        setDebugInfo(`✅ ${Object.keys(data).length} città caricate`);
       } catch (e) {
         console.error('Errore nel caricamento dei poligoni città', e);
+        setDebugInfo(`❌ Errore: ${e}`);
       }
     };
 
@@ -174,13 +184,13 @@ export default function Map() {
   const handleTypeChange = (type: string) => setSelectedType(type);
   const handleCityChange = (city: string) => {
     setSelectedCity(city);
-    setShowCoverage(false); // 🆕 Quando cambio città, spengo la heatmap così si resetta in modo pulito
+    setShowCoverage(false);
   };
 
   const handleResetFilters = useCallback(() => {
     setSelectedType('');
     setSelectedCity('');
-    setShowCoverage(false); // 🆕 reset anche della copertura
+    setShowCoverage(false);
     const years = chargingStations
       .map((station) => station.installation_year || station.year)
       .filter((year): year is number => Boolean(year));
@@ -252,7 +262,7 @@ export default function Map() {
     }
   }, []);
 
-  // ✅ Fix for undefined type values
+  // Fix for undefined type values
   const availableTypes = useMemo(() => {
     const types = new Set(
       chargingStations.map((station) => station.charging_station_type).filter((t): t is string => Boolean(t))
@@ -260,7 +270,7 @@ export default function Map() {
     return Array.from(types).sort();
   }, [chargingStations]);
 
-  // ✅ Fix for undefined city values
+  // Fix for undefined city values
   const availableCities = useMemo(() => {
     const cities = new Set(
       chargingStations.map((station) => station.city).filter((c): c is string => Boolean(c))
@@ -307,16 +317,31 @@ export default function Map() {
   const mapCenter: [number, number] = [45.5415, 10.2118]; // Brescia
   const mapZoom = 9;
 
-  // 🆕 Poligono della città selezionata
+  // Poligono della città selezionata
   const currentCityPolygon = useMemo(() => {
-    if (!selectedCity) return null;
-    const feature = cityBoundaries[selectedCity];
-    if (!feature) return null;
+    if (!selectedCity) {
+      console.log('⚠️ Nessuna città selezionata');
+      return null;
+    }
+    
+    const cityData = cityBoundaries[selectedCity];
+    
+    if (!cityData) {
+      console.log(`⚠️ Poligono non trovato per città: ${selectedCity}`);
+      console.log('Città disponibili:', Object.keys(cityBoundaries));
+      return null;
+    }
 
-    const geometry = feature.geometry || feature;
-    return turf.feature(
-      geometry,
-    ) as turf.helpers.Feature<turf.helpers.Polygon | turf.helpers.MultiPolygon>;
+    console.log(`✅ Poligono trovato per ${selectedCity}`, cityData);
+    
+    // La struttura è già un Feature completo, restituiscilo direttamente
+    if (cityData.type === 'Feature' && cityData.geometry) {
+      return cityData as turf.helpers.Feature<turf.helpers.Polygon | turf.helpers.MultiPolygon>;
+    }
+    
+    // Fallback se ha solo la geometria
+    const geometry = cityData.geometry || cityData;
+    return turf.feature(geometry) as turf.helpers.Feature<turf.helpers.Polygon | turf.helpers.MultiPolygon>;
   }, [selectedCity, cityBoundaries]);
 
   // Reset add mode on mobile
@@ -327,7 +352,7 @@ export default function Map() {
       setShowForm(false);
       setSelectedType('');
       setSelectedCity('');
-      setShowCoverage(false); // 🆕 disattivo anche la heatmap su mobile
+      setShowCoverage(false);
     }
   }, [isLargeScreen]);
 
@@ -366,7 +391,16 @@ export default function Map() {
 
   return (
     <div className="h-screen w-full relative">
-      {/* 🆕 Toggle Copertura territorio */}
+      {/* DEBUG INFO - rimuovi dopo aver risolto */}
+      <div className="absolute top-20 left-4 z-[1000] bg-yellow-100 rounded-lg shadow-lg px-3 py-2 text-xs max-w-xs">
+        <div><strong>Debug:</strong></div>
+        <div>{debugInfo}</div>
+        <div>Città selezionata: {selectedCity || 'nessuna'}</div>
+        <div>Poligono caricato: {currentCityPolygon ? '✅ Sì' : '❌ No'}</div>
+        <div>Città disponibili: {Object.keys(cityBoundaries).join(', ') || 'nessuna'}</div>
+      </div>
+
+      {/* Toggle Copertura territorio */}
       <div className="absolute top-4 left-4 z-[1000] bg-white rounded-2xl shadow-lg px-4 py-3 text-sm">
         <label
           className={`flex items-center gap-2 select-none ${
@@ -378,7 +412,10 @@ export default function Map() {
             className="h-4 w-4"
             checked={showCoverage}
             disabled={!currentCityPolygon}
-            onChange={(e) => setShowCoverage(e.target.checked)}
+            onChange={(e) => {
+              console.log('📍 Checkbox cliccato:', e.target.checked);
+              setShowCoverage(e.target.checked);
+            }}
           />
           <span className="font-medium">
             Copertura territorio
@@ -427,12 +464,15 @@ export default function Map() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
 
-        {/* 🆕 Heatmap: si aggiorna con filteredStations (anno, tipo, città) */}
+        {/* Heatmap: si aggiorna con filteredStations (anno, tipo, città) */}
         {showCoverage && currentCityPolygon && (
-          <CoverageLayer
-            stations={filteredStations}
-            cityPolygon={currentCityPolygon}
-          />
+          <>
+            {console.log('🗺️ Renderizzando CoverageLayer con', filteredStations.length, 'stazioni')}
+            <CoverageLayer
+              stations={filteredStations}
+              cityPolygon={currentCityPolygon}
+            />
+          </>
         )}
 
         {/* Markers */}
