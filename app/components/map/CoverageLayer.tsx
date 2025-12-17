@@ -1,8 +1,8 @@
 'use client';
-
+// @ts-ignore
+import * as turf from '@turf/turf';
 import { useMemo } from 'react';
 import { GeoJSON } from 'react-leaflet';
-import * as turf from '@turf/turf';
 import { ChargingStation } from '@/app/types/charging-station';
 
 type CoverageLayerProps = {
