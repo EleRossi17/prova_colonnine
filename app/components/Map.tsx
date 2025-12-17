@@ -37,6 +37,7 @@ const MapFilters = dynamic(() => import('./map/MapFilters'), { ssr: false });
 const YearPicker = dynamic(() => import('./map/YearPicker'), { ssr: false });
 const AddStationControl = dynamic(() => import('./map/AddStationControl'), { ssr: false });
 const ChargingStationForm = dynamic(() => import('./map/ChargingStationForm'), { ssr: false });
+const GoogleMapsPinControl = dynamic(() => import('./map/GoogleMapsPinControl'), { ssr: false });
 
 // Layer della copertura territorio
 const CoverageLayer = dynamic(() => import('./map/CoverageLayer'), { ssr: false });
@@ -575,6 +576,9 @@ export default function Map() {
           maxYear={yearRange.max}
           onYearChange={handleYearChange}
         />
+
+        {/* Google Maps Pin - SEMPRE VISIBILE */}
+        <GoogleMapsPinControl colors={colors} />
 
         {/* Controls for large screen */}
         {isLargeScreen && (
