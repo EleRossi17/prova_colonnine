@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import * as turf from '@turf/turf'; // 🆕 per gestire i poligoni e le distanze
 import { ChargingStation, MarkerClusterColors } from '@/app/types/charging-station';
 import { ChargingStationService } from '@/app/services/chargingStationService';
 
@@ -37,6 +38,9 @@ const YearPicker = dynamic(() => import('./map/YearPicker'), { ssr: false });
 const AddStationControl = dynamic(() => import('./map/AddStationControl'), { ssr: false });
 const ChargingStationForm = dynamic(() => import('./map/ChargingStationForm'), { ssr: false });
 
+// 🆕 Layer della copertura territorio
+const CoverageLayer = dynamic(() => import('./map/CoverageLayer'), { ssr: false });
+
 export default function Map() {
   const { isLargeScreen } = useResponsive();
 
@@ -53,6 +57,10 @@ export default function Map() {
   const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // 🆕 Heatmap state
+  const [showCoverage, setShowCoverage] = useState<boolean>(false);
+  const [cityBoundaries, setCityBoundaries] = useState<Record<string, any>>({});
 
   // Color palette
   const colors: MarkerClusterColors = useMemo(
@@ -90,6 +98,25 @@ export default function Map() {
     return () => {
       if (document.head.contains(link)) document.head.removeChild(link);
     };
+  }, []);
+
+  // 🆕 Carica i poligoni città da /public/city_boundaries.json
+  useEffect(() => {
+    const loadCityBoundaries = async () => {
+      try {
+        const res = await fetch('/city_boundaries.json');
+        if (!res.ok) {
+          console.warn('city_boundaries.json non trovato o non accessibile');
+          return;
+        }
+        const data = await res.json();
+        setCityBoundaries(data);
+      } catch (e) {
+        console.error('Errore nel caricamento dei poligoni città', e);
+      }
+    };
+
+    loadCityBoundaries();
   }, []);
 
   // Fetch charging stations
@@ -145,11 +172,15 @@ export default function Map() {
   // Filter handlers
   const handleYearChange = (year: number) => setSelectedYear(year);
   const handleTypeChange = (type: string) => setSelectedType(type);
-  const handleCityChange = (city: string) => setSelectedCity(city);
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+    setShowCoverage(false); // 🆕 Quando cambio città, spengo la heatmap così si resetta in modo pulito
+  };
 
   const handleResetFilters = useCallback(() => {
     setSelectedType('');
     setSelectedCity('');
+    setShowCoverage(false); // 🆕 reset anche della copertura
     const years = chargingStations
       .map((station) => station.installation_year || station.year)
       .filter((year): year is number => Boolean(year));
@@ -276,6 +307,18 @@ export default function Map() {
   const mapCenter: [number, number] = [45.5415, 10.2118]; // Brescia
   const mapZoom = 9;
 
+  // 🆕 Poligono della città selezionata
+  const currentCityPolygon = useMemo(() => {
+    if (!selectedCity) return null;
+    const feature = cityBoundaries[selectedCity];
+    if (!feature) return null;
+
+    const geometry = feature.geometry || feature;
+    return turf.feature(
+      geometry,
+    ) as turf.helpers.Feature<turf.helpers.Polygon | turf.helpers.MultiPolygon>;
+  }, [selectedCity, cityBoundaries]);
+
   // Reset add mode on mobile
   useEffect(() => {
     if (!isLargeScreen) {
@@ -284,6 +327,7 @@ export default function Map() {
       setShowForm(false);
       setSelectedType('');
       setSelectedCity('');
+      setShowCoverage(false); // 🆕 disattivo anche la heatmap su mobile
     }
   }, [isLargeScreen]);
 
@@ -322,6 +366,51 @@ export default function Map() {
 
   return (
     <div className="h-screen w-full relative">
+      {/* 🆕 Toggle Copertura territorio */}
+      <div className="absolute top-4 left-4 z-[1000] bg-white rounded-2xl shadow-lg px-4 py-3 text-sm">
+        <label
+          className={`flex items-center gap-2 select-none ${
+            !currentCityPolygon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          }`}
+        >
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={showCoverage}
+            disabled={!currentCityPolygon}
+            onChange={(e) => setShowCoverage(e.target.checked)}
+          />
+          <span className="font-medium">
+            Copertura territorio
+            {!currentCityPolygon && ' (seleziona una città)'}
+          </span>
+        </label>
+
+        <div className="mt-2 text-xs space-y-1">
+          <div className="flex items-center gap-1">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: '#00aa00' }}
+            />
+            <span>Ben coperta (&lt; 500 m)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: '#ffcc00' }}
+            />
+            <span>Parziale (0.5–2 km)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: '#ff0000' }}
+            />
+            <span>Scoperta (&gt; 2 km)</span>
+          </div>
+        </div>
+      </div>
+
       <MapContainer
         center={mapCenter}
         zoom={mapZoom}
@@ -337,6 +426,14 @@ export default function Map() {
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
+
+        {/* 🆕 Heatmap: si aggiorna con filteredStations (anno, tipo, città) */}
+        {showCoverage && currentCityPolygon && (
+          <CoverageLayer
+            stations={filteredStations}
+            cityPolygon={currentCityPolygon}
+          />
+        )}
 
         {/* Markers */}
         {filteredStations.map((station) => (
