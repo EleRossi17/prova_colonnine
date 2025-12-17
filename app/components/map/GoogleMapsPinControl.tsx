@@ -15,53 +15,56 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const pinRef = useRef<HTMLDivElement>(null);
 
-  // Handle mouse down per iniziare il drag
+  // Mouse down: inizia il drag
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
     setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
-  // Handle mouse move globale
+  // Mouse move globale
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      // ⭐ MODIFICA: usiamo sempre il cursore come punto di riferimento
       setDragPosition({ x: e.clientX, y: e.clientY });
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
-      if (!isDragging) return;
-      
+    const handleMouseUp = () => {
+      if (!isDragging || !dragPosition) return;
+
       setIsDragging(false);
-      setDragPosition(null);
 
       // Ottieni il container della mappa
       const mapContainer = map.getContainer();
       const rect = mapContainer.getBoundingClientRect();
 
-      // Verifica se il mouse è sopra la mappa
+      const { x, y } = dragPosition;
+
+      // Verifica se il cursore è sopra la mappa
       if (
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
       ) {
-        // Converti coordinate schermo a coordinate geografiche
+        // ⭐ MODIFICA: usiamo la posizione salvata del cursore (dragPosition)
         const containerPoint = map.containerPointToLatLng([
-          e.clientX - rect.left,
-          e.clientY - rect.top
+          x - rect.left,
+          y - rect.top
         ]);
-        
+
         const lat = containerPoint.lat.toFixed(6);
         const lng = containerPoint.lng.toFixed(6);
 
         console.log('📍 Apertura Google Maps a:', lat, lng);
 
-        // Apri Google Maps
         const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&ll=${lat},${lng}&z=18`;
         window.open(googleMapsUrl, '_blank');
       }
+
+      setDragPosition(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -71,7 +74,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, map]);
+  }, [isDragging, map, dragPosition]);
 
   // Previeni la selezione del testo durante il drag
   useEffect(() => {
@@ -91,7 +94,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
 
   return (
     <>
-      {/* Omino draggable */}
+      {/* Omino draggable fisso sulla UI */}
       <div
         ref={pinRef}
         onMouseDown={handleMouseDown}
@@ -107,7 +110,8 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : 'all 0.2s ease',
           opacity: isDragging ? 0.3 : 1,
-          pointerEvents: isDragging ? 'none' : 'auto'
+          // ⭐ MODIFICA: lasciamo pointerEvents 'auto', non lo disattiviamo
+          pointerEvents: 'auto',
         }}
       >
         <div
@@ -117,7 +121,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
             transition: 'transform 0.2s ease'
           }}
         >
-          {/* Icona omino - SOLO SAGOMA */}
           <div
             style={{
               fontSize: '56px',
@@ -128,8 +131,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           >
             🚶
           </div>
-          
-          {/* Testo sotto */}
+
           <div 
             className="text-center px-3 py-1 rounded-lg shadow-md"
             style={{
@@ -153,53 +155,72 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
       {/* Omino che segue il cursore durante il drag */}
       {isDragging && dragPosition && (
         <>
-          {/* Omino animato */}
+          {/* ⭐ MODIFICA: i piedi dell'omino coincidono col punto esatto */}
           <div
             style={{
               position: 'fixed',
-              left: dragPosition.x - 28,
-              top: dragPosition.y - 56,
+              left: dragPosition.x,
+              top: dragPosition.y,
               zIndex: 9999,
               pointerEvents: 'none',
               fontSize: '56px',
               filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))',
-              animation: 'bounce 0.5s ease infinite'
+              animation: 'bounce 0.5s ease infinite',
+              transform: 'translate(-50%, -100%)', // centro in X, piedi sul punto
             }}
           >
             🚶
           </div>
           
-          {/* Mirino di precisione */}
+          {/* Mirino di precisione centrato sul cursore */}
           <div
             style={{
               position: 'fixed',
-              left: dragPosition.x - 20,
-              top: dragPosition.y - 20,
+              left: dragPosition.x,
+              top: dragPosition.y,
               zIndex: 9998,
               pointerEvents: 'none',
-              width: '40px',
-              height: '40px',
-              border: `3px solid ${colors.city_border}`,
+              width: '32px',
+              height: '32px',
+              transform: 'translate(-50%, -50%)', // ⭐ centro esatto sul cursore
+              border: `2px solid ${colors.city_border}`,
               borderRadius: '50%',
-              backgroundColor: 'rgba(46, 134, 171, 0.2)',
-              boxShadow: '0 0 0 2px white, 0 0 12px rgba(46, 134, 171, 0.5)'
+              backgroundColor: 'rgba(46, 134, 171, 0.15)',
+              boxShadow: '0 0 0 2px white, 0 0 8px rgba(46, 134, 171, 0.5)'
             }}
           >
-            {/* Croce centrale del mirino */}
+            {/* Croce centrale */}
             <div
               style={{
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: '20px',
-                height: '20px',
-                borderTop: `2px solid ${colors.city_border}`,
-                borderLeft: `2px solid ${colors.city_border}`,
-                borderRight: `2px solid ${colors.city_border}`,
-                borderBottom: `2px solid ${colors.city_border}`,
+                width: '16px',
+                height: '16px',
               }}
-            />
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 0,
+                  right: 0,
+                  height: '1px',
+                  backgroundColor: colors.city_border,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: 0,
+                  bottom: 0,
+                  width: '1px',
+                  backgroundColor: colors.city_border,
+                }}
+              />
+            </div>
             {/* Punto centrale */}
             <div
               style={{
@@ -207,8 +228,8 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: '6px',
-                height: '6px',
+                width: '4px',
+                height: '4px',
                 borderRadius: '50%',
                 backgroundColor: colors.city_border,
                 boxShadow: `0 0 4px ${colors.city_border}`
@@ -218,7 +239,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
         </>
       )}
 
-      {/* Target zone indicator durante drag */}
+      {/* Target zone indicator durante drag (facoltativo, puoi anche ridurlo se “disturba”) */}
       {isDragging && (
         <div
           style={{
@@ -232,7 +253,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'rgba(0,0,0,0.1)'
+            backgroundColor: 'rgba(0,0,0,0.05)' // leggermente meno scuro
           }}
         >
           <div style={{ textAlign: 'center' }}>
@@ -242,7 +263,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
                 width: '120px',
                 height: '120px',
                 backgroundColor: colors.city_border,
-                opacity: 0.3,
+                opacity: 0.25,
                 animation: 'pulse 1.5s ease infinite',
                 border: `4px dashed white`
               }}
@@ -256,7 +277,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
                 boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
               }}
             >
-              📍 Rilascia sulla mappa per aprire Google Maps
+              📍 Il punto esatto è sotto il mirino
             </div>
           </div>
         </div>
@@ -269,8 +290,8 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           50% { transform: translateY(-10px); }
         }
         @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.3; }
-          50% { transform: scale(1.15); opacity: 0.5; }
+          0%, 100% { transform: scale(1); opacity: 0.25; }
+          50% { transform: scale(1.15); opacity: 0.45; }
         }
       `}</style>
     </>
