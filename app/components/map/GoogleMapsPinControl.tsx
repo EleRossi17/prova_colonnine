@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useMap, useMapEvents } from 'react-leaflet';
+import { useState, useRef, useEffect } from 'react';
+import { useMap } from 'react-leaflet';
 import { MarkerClusterColors } from '@/app/types/charging-station';
 
 type GoogleMapsPinControlProps = {
@@ -15,45 +15,86 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const pinRef = useRef<HTMLDivElement>(null);
 
-  // Handle drag start
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+  // Handle mouse down per iniziare il drag
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     setIsDragging(true);
-    // Crea un'immagine trasparente per il drag
-    const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(img, 0, 0);
-  };
-
-  // Handle dragging over map
-  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
-    if (e.clientX === 0 && e.clientY === 0) return; // Ignora l'ultimo evento
     setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
-  // Handle drop
-  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-    setIsDragging(false);
-    setDragPosition(null);
+  // Handle mouse move globale
+  useEffect(() => {
+    if (!isDragging) return;
 
-    // Converti coordinate schermo a coordinate mappa
-    const containerPoint = map.containerPointToLatLng([e.clientX, e.clientY]);
-    const lat = containerPoint.lat;
-    const lng = containerPoint.lng;
+    const handleMouseMove = (e: MouseEvent) => {
+      setDragPosition({ x: e.clientX, y: e.clientY });
+    };
 
-    // Apri Google Maps nella nuova tab
-    const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&ll=${lat},${lng}&z=18`;
-    window.open(googleMapsUrl, '_blank');
-  };
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      setIsDragging(false);
+      setDragPosition(null);
+
+      // Ottieni il container della mappa
+      const mapContainer = map.getContainer();
+      const rect = mapContainer.getBoundingClientRect();
+
+      // Verifica se il mouse è sopra la mappa
+      if (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      ) {
+        // Converti coordinate schermo a coordinate geografiche
+        const containerPoint = map.containerPointToLatLng([
+          e.clientX - rect.left,
+          e.clientY - rect.top
+        ]);
+        
+        const lat = containerPoint.lat.toFixed(6);
+        const lng = containerPoint.lng.toFixed(6);
+
+        console.log('📍 Apertura Google Maps a:', lat, lng);
+
+        // Apri Google Maps
+        const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&ll=${lat},${lng}&z=18`;
+        window.open(googleMapsUrl, '_blank');
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, map]);
+
+  // Previeni la selezione del testo durante il drag
+  useEffect(() => {
+    if (isDragging) {
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'grabbing';
+    } else {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    }
+
+    return () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isDragging]);
 
   return (
     <>
       {/* Omino draggable */}
       <div
         ref={pinRef}
-        draggable
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
+        onMouseDown={handleMouseDown}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         className="leaflet-control"
@@ -65,7 +106,8 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           zIndex: 1000,
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : 'all 0.2s ease',
-          opacity: isDragging ? 0.3 : 1
+          opacity: isDragging ? 0.3 : 1,
+          pointerEvents: isDragging ? 'none' : 'auto'
         }}
       >
         <div
@@ -127,36 +169,43 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
       {/* Target zone indicator durante drag */}
       {isDragging && (
         <div
-          className="leaflet-control"
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 999,
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 998,
             pointerEvents: 'none',
-            textAlign: 'center'
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.1)'
           }}
         >
-          <div
-            className="rounded-full"
-            style={{
-              width: '100px',
-              height: '100px',
-              backgroundColor: colors.city_border,
-              opacity: 0.2,
-              animation: 'pulse 1s ease infinite',
-              border: `4px dashed ${colors.city_border}`
-            }}
-          />
-          <div
-            className="text-lg font-bold mt-2"
-            style={{ 
-              color: colors.city_border,
-              textShadow: '0 2px 4px rgba(255,255,255,0.8)'
-            }}
-          >
-            📍 Rilascia qui
+          <div style={{ textAlign: 'center' }}>
+            <div
+              className="rounded-full mx-auto"
+              style={{
+                width: '120px',
+                height: '120px',
+                backgroundColor: colors.city_border,
+                opacity: 0.3,
+                animation: 'pulse 1.5s ease infinite',
+                border: `4px dashed white`
+              }}
+            />
+            <div
+              className="text-xl font-bold mt-4 px-4 py-2 rounded-lg"
+              style={{ 
+                color: 'white',
+                backgroundColor: colors.city_border,
+                display: 'inline-block',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}
+            >
+              📍 Rilascia sulla mappa per aprire Google Maps
+            </div>
           </div>
         </div>
       )}
@@ -168,8 +217,8 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           50% { transform: translateY(-10px); }
         }
         @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.2; }
-          50% { transform: scale(1.2); opacity: 0.3; }
+          0%, 100% { transform: scale(1); opacity: 0.3; }
+          50% { transform: scale(1.15); opacity: 0.5; }
         }
       `}</style>
     </>
