@@ -15,19 +15,16 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const pinRef = useRef<HTMLDivElement>(null);
 
-  // Mouse down: inizia il drag
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
     setDragPosition({ x: e.clientX, y: e.clientY });
   };
 
-  // Mouse move globale
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      // ⭐ MODIFICA: usiamo sempre il cursore come punto di riferimento
       setDragPosition({ x: e.clientX, y: e.clientY });
     };
 
@@ -36,23 +33,16 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
 
       setIsDragging(false);
 
-      // Ottieni il container della mappa
       const mapContainer = map.getContainer();
       const rect = mapContainer.getBoundingClientRect();
 
       const { x, y } = dragPosition;
 
-      // Verifica se il cursore è sopra la mappa
-      if (
-        x >= rect.left &&
-        x <= rect.right &&
-        y >= rect.top &&
-        y <= rect.bottom
-      ) {
-        // ⭐ MODIFICA: usiamo la posizione salvata del cursore (dragPosition)
+      // Il punto esatto è il cursore (dragPosition)
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
         const containerPoint = map.containerPointToLatLng([
           x - rect.left,
-          y - rect.top
+          y - rect.top,
         ]);
 
         const lat = containerPoint.lat.toFixed(6);
@@ -76,7 +66,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
     };
   }, [isDragging, map, dragPosition]);
 
-  // Previeni la selezione del testo durante il drag
   useEffect(() => {
     if (isDragging) {
       document.body.style.userSelect = 'none';
@@ -94,7 +83,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
 
   return (
     <>
-      {/* Omino draggable fisso sulla UI */}
+      {/* Omino di controllo fisso */}
       <div
         ref={pinRef}
         onMouseDown={handleMouseDown}
@@ -110,7 +99,6 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           cursor: isDragging ? 'grabbing' : 'grab',
           transition: isDragging ? 'none' : 'all 0.2s ease',
           opacity: isDragging ? 0.3 : 1,
-          // ⭐ MODIFICA: lasciamo pointerEvents 'auto', non lo disattiviamo
           pointerEvents: 'auto',
         }}
       >
@@ -118,7 +106,7 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
           className="flex flex-col items-center gap-2"
           style={{
             transform: isHovering && !isDragging ? 'scale(1.1)' : 'scale(1)',
-            transition: 'transform 0.2s ease'
+            transition: 'transform 0.2s ease',
           }}
         >
           <div
@@ -126,36 +114,36 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
               fontSize: '56px',
               lineHeight: 1,
               userSelect: 'none',
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
             }}
           >
             🚶
           </div>
 
-          <div 
+          <div
             className="text-center px-3 py-1 rounded-lg shadow-md"
             style={{
               backgroundColor: 'white',
-              border: `2px solid ${colors.city_border}`
+              border: `2px solid ${colors.city_border}`,
             }}
           >
-            <div 
+            <div
               className="text-xs font-bold"
               style={{ color: colors.city_border }}
             >
               Google Maps
             </div>
             <div className="text-[10px] text-gray-500 whitespace-nowrap">
-              Trascina qui
+              Trascina sulla mappa
             </div>
           </div>
         </div>
       </div>
 
-      {/* Omino che segue il cursore durante il drag */}
+      {/* Omino + mirino durante il drag */}
       {isDragging && dragPosition && (
         <>
-          {/* ⭐ MODIFICA: i piedi dell'omino coincidono col punto esatto */}
+          {/* Omino che segue il cursore */}
           <div
             style={{
               position: 'fixed',
@@ -165,133 +153,78 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
               pointerEvents: 'none',
               fontSize: '56px',
               filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))',
+              // Piedi quasi sul punto esatto
+              transform: 'translate(-50%, -95%)',
               animation: 'bounce 0.5s ease infinite',
-              transform: 'translate(-50%, -100%)', // centro in X, piedi sul punto
             }}
           >
             🚶
           </div>
-          
-          {/* Mirino di precisione centrato sul cursore */}
+
+          {/* 🔍 Mirino MOLTO piccolo e preciso */}
           <div
             style={{
               position: 'fixed',
               left: dragPosition.x,
               top: dragPosition.y,
-              zIndex: 9998,
+              zIndex: 10000,
               pointerEvents: 'none',
-              width: '32px',
-              height: '32px',
-              transform: 'translate(-50%, -50%)', // ⭐ centro esatto sul cursore
-              border: `2px solid ${colors.city_border}`,
+              width: '14px',
+              height: '14px',
+              transform: 'translate(-50%, -50%)',
               borderRadius: '50%',
-              backgroundColor: 'rgba(46, 134, 171, 0.15)',
-              boxShadow: '0 0 0 2px white, 0 0 8px rgba(46, 134, 171, 0.5)'
+              border: `1px solid ${colors.city_border}`,
+              backgroundColor: 'transparent',
+              boxShadow: '0 0 3px rgba(0,0,0,0.6)',
             }}
           >
-            {/* Croce centrale */}
+            {/* crocetta */}
             <div
               style={{
                 position: 'absolute',
                 top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '16px',
-                height: '16px',
+                left: 0,
+                right: 0,
+                height: '1px',
+                transform: 'translateY(-50%)',
+                backgroundColor: colors.city_border,
               }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  backgroundColor: colors.city_border,
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: 0,
-                  bottom: 0,
-                  width: '1px',
-                  backgroundColor: colors.city_border,
-                }}
-              />
-            </div>
-            {/* Punto centrale */}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: 0,
+                bottom: 0,
+                width: '1px',
+                transform: 'translateX(-50%)',
+                backgroundColor: colors.city_border,
+              }}
+            />
+            {/* puntino centrale */}
             <div
               style={{
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: '4px',
-                height: '4px',
+                width: '3px',
+                height: '3px',
                 borderRadius: '50%',
                 backgroundColor: colors.city_border,
-                boxShadow: `0 0 4px ${colors.city_border}`
               }}
             />
           </div>
         </>
       )}
 
-      {/* Target zone indicator durante drag (facoltativo, puoi anche ridurlo se “disturba”) */}
-      {isDragging && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 998,
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0,0,0,0.05)' // leggermente meno scuro
-          }}
-        >
-          <div style={{ textAlign: 'center' }}>
-            <div
-              className="rounded-full mx-auto"
-              style={{
-                width: '120px',
-                height: '120px',
-                backgroundColor: colors.city_border,
-                opacity: 0.25,
-                animation: 'pulse 1.5s ease infinite',
-                border: `4px dashed white`
-              }}
-            />
-            <div
-              className="text-xl font-bold mt-4 px-4 py-2 rounded-lg"
-              style={{ 
-                color: 'white',
-                backgroundColor: colors.city_border,
-                display: 'inline-block',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-              }}
-            >
-              📍 Il punto esatto è sotto il mirino
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🔥 RIMOSSO l’overlay grigio a schermo intero per non disturbare
+          (se ti piace tenerlo, puoi riaggiungerlo ma è quello che dava “area troppo grande”) */}
 
-      {/* CSS animations */}
       <style>{`
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.25; }
-          50% { transform: scale(1.15); opacity: 0.45; }
+          50% { transform: translateY(-6px); }
         }
       `}</style>
     </>
