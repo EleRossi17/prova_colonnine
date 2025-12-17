@@ -20,16 +20,47 @@ type CoverageLayerProps = {
 export default function CoverageLayer({ stations, cityPolygon, colors }: CoverageLayerProps) {
   const map = useMap();
 
+  // 🔝 Crea i pane con z-index per controllare l'ordine:
+  //   city   (perimetro) > excellent (ottima) > good (buona) > poor (scarsa)
+  useEffect(() => {
+    // scarsa copertura (più in basso)
+    if (!map.getPane('coverage-poor')) {
+      const pane = map.createPane('coverage-poor');
+      pane.style.zIndex = '410';
+    }
+
+    // buona copertura
+    if (!map.getPane('coverage-good')) {
+      const pane = map.createPane('coverage-good');
+      pane.style.zIndex = '420';
+    }
+
+    // ottima copertura
+    if (!map.getPane('coverage-excellent')) {
+      const pane = map.createPane('coverage-excellent');
+      pane.style.zIndex = '430';
+    }
+
+    // perimetro città (più in alto)
+    if (!map.getPane('coverage-city')) {
+      const pane = map.createPane('coverage-city');
+      pane.style.zIndex = '440';
+    }
+  }, [map]);
+
   // 1️⃣ Fit bounds alla città quando viene attivato il layer
   useEffect(() => {
     if (cityPolygon) {
       try {
         const bbox = turf.bbox(cityPolygon);
         console.log('📍 Fitting bounds to city:', bbox);
-        map.fitBounds([
-          [bbox[1], bbox[0]],
-          [bbox[3], bbox[2]]
-        ], { padding: [50, 50] });
+        map.fitBounds(
+          [
+            [bbox[1], bbox[0]],
+            [bbox[3], bbox[2]],
+          ],
+          { padding: [50, 50] }
+        );
       } catch (error) {
         console.error('Error fitting bounds:', error);
       }
@@ -80,7 +111,7 @@ export default function CoverageLayer({ stations, cityPolygon, colors }: Coverag
         const point = turf.point([station.Longitude, station.Latitude]);
         const outer = turf.buffer(point, 2, { units: 'kilometers' });
         const inner = turf.buffer(point, 0.5, { units: 'kilometers' });
-        
+
         try {
           return turf.difference(outer, inner);
         } catch {
@@ -138,61 +169,64 @@ export default function CoverageLayer({ stations, cityPolygon, colors }: Coverag
     stations: stations.length,
     stationBuffers: !!stationBuffers,
     partialCoverage: !!partialCoverage,
-    uncoveredArea: !!uncoveredArea
+    uncoveredArea: !!uncoveredArea,
   });
 
   return (
     <>
-      {/* Zone ben coperte (blu) - SOTTO */}
-      {stationBuffers && (
-        <GeoJSON
-          key={`covered-${stations.length}-${Date.now()}`}
-          data={stationBuffers}
-          style={{
-            color: colors.excellent,
-            weight: 1,
-            opacity: 0.4,
-            fillColor: colors.excellent,
-            fillOpacity: 0.15
-          }}
-          onEachFeature={(feature, layer) => {
-            console.log('✅ Zone blu renderizzate');
-          }}
-        />
-      )}
-
-      {/* Zone parzialmente coperte (viola) - SOTTO */}
-      {partialCoverage && (
-        <GeoJSON
-          key={`partial-${stations.length}-${Date.now()}`}
-          data={partialCoverage}
-          style={{
-            color: colors.good,
-            weight: 1,
-            opacity: 0.35,
-            fillColor: colors.good,
-            fillOpacity: 0.12
-          }}
-          onEachFeature={(feature, layer) => {
-            console.log('✅ Zone viola renderizzate');
-          }}
-        />
-      )}
-
-      {/* Zone scoperte (arancione) - SOTTO */}
+      {/* Zone scoperte (scarsa copertura) - IN BASSO */}
       {uncoveredArea && (
         <GeoJSON
           key={`uncovered-${stations.length}-${Date.now()}`}
           data={uncoveredArea}
+          pane="coverage-poor"
           style={{
             color: colors.poor,
             weight: 1,
             opacity: 0.35,
             fillColor: colors.poor,
-            fillOpacity: 0.1
+            fillOpacity: 0.1,
           }}
           onEachFeature={(feature, layer) => {
-            console.log('✅ Zone arancioni renderizzate');
+            console.log('✅ Zone scoperte (poor) renderizzate');
+          }}
+        />
+      )}
+
+      {/* Zone parzialmente coperte (buona copertura) */}
+      {partialCoverage && (
+        <GeoJSON
+          key={`partial-${stations.length}-${Date.now()}`}
+          data={partialCoverage}
+          pane="coverage-good"
+          style={{
+            color: colors.good,
+            weight: 1,
+            opacity: 0.35,
+            fillColor: colors.good,
+            fillOpacity: 0.12,
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone parziali (good) renderizzate');
+          }}
+        />
+      )}
+
+      {/* Zone ben coperte (ottima copertura) */}
+      {stationBuffers && (
+        <GeoJSON
+          key={`covered-${stations.length}-${Date.now()}`}
+          data={stationBuffers}
+          pane="coverage-excellent"
+          style={{
+            color: colors.excellent,
+            weight: 1,
+            opacity: 0.4,
+            fillColor: colors.excellent,
+            fillOpacity: 0.15,
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone ben coperte (excellent) renderizzate');
           }}
         />
       )}
@@ -202,20 +236,16 @@ export default function CoverageLayer({ stations, cityPolygon, colors }: Coverag
         <GeoJSON
           key={`city-${JSON.stringify(cityPolygon.geometry.coordinates[0][0])}`}
           data={cityPolygon}
+          pane="coverage-city"
           style={{
             color: '#2E86AB',
             weight: 4,
             opacity: 1,
             fillOpacity: 0,
-            dashArray: '10, 10'
+            dashArray: '10, 10',
           }}
-          pane="overlayPane"
           onEachFeature={(feature, layer) => {
             console.log('✅ Perimetro città renderizzato (in primo piano)');
-            // Porta il layer in primo piano
-            if (layer && (layer as any).bringToFront) {
-              (layer as any).bringToFront();
-            }
           }}
         />
       )}
