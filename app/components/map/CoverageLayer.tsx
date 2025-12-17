@@ -10,9 +10,14 @@ import type { Feature, Polygon, MultiPolygon } from 'geojson';
 type CoverageLayerProps = {
   stations: ChargingStation[];
   cityPolygon: Feature<Polygon | MultiPolygon>;
+  colors: {
+    excellent: string;
+    good: string;
+    poor: string;
+  };
 };
 
-export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerProps) {
+export default function CoverageLayer({ stations, cityPolygon, colors }: CoverageLayerProps) {
   const map = useMap();
 
   // 1️⃣ Fit bounds alla città quando viene attivato il layer
@@ -138,74 +143,79 @@ export default function CoverageLayer({ stations, cityPolygon }: CoverageLayerPr
 
   return (
     <>
-      {/* Perimetro città - SEMPRE visibile */}
+      {/* Zone ben coperte (blu) - SOTTO */}
+      {stationBuffers && (
+        <GeoJSON
+          key={`covered-${stations.length}-${Date.now()}`}
+          data={stationBuffers}
+          style={{
+            color: colors.excellent,
+            weight: 1,
+            opacity: 0.4,
+            fillColor: colors.excellent,
+            fillOpacity: 0.15
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone blu renderizzate');
+          }}
+        />
+      )}
+
+      {/* Zone parzialmente coperte (viola) - SOTTO */}
+      {partialCoverage && (
+        <GeoJSON
+          key={`partial-${stations.length}-${Date.now()}`}
+          data={partialCoverage}
+          style={{
+            color: colors.good,
+            weight: 1,
+            opacity: 0.35,
+            fillColor: colors.good,
+            fillOpacity: 0.12
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone viola renderizzate');
+          }}
+        />
+      )}
+
+      {/* Zone scoperte (arancione) - SOTTO */}
+      {uncoveredArea && (
+        <GeoJSON
+          key={`uncovered-${stations.length}-${Date.now()}`}
+          data={uncoveredArea}
+          style={{
+            color: colors.poor,
+            weight: 1,
+            opacity: 0.35,
+            fillColor: colors.poor,
+            fillOpacity: 0.1
+          }}
+          onEachFeature={(feature, layer) => {
+            console.log('✅ Zone arancioni renderizzate');
+          }}
+        />
+      )}
+
+      {/* Perimetro città - SEMPRE IN PRIMO PIANO */}
       {cityPolygon && (
         <GeoJSON
           key={`city-${JSON.stringify(cityPolygon.geometry.coordinates[0][0])}`}
           data={cityPolygon}
           style={{
             color: '#2E86AB',
-            weight: 3,
-            opacity: 0.8,
+            weight: 4,
+            opacity: 1,
             fillOpacity: 0,
             dashArray: '10, 10'
           }}
+          pane="overlayPane"
           onEachFeature={(feature, layer) => {
-            console.log('✅ Perimetro città renderizzato');
-          }}
-        />
-      )}
-
-      {/* Zone ben coperte (verde) */}
-      {stationBuffers && (
-        <GeoJSON
-          key={`covered-${stations.length}-${Date.now()}`}
-          data={stationBuffers}
-          style={{
-            color: '#00aa00',
-            weight: 2,
-            opacity: 0.7,
-            fillColor: '#00aa00',
-            fillOpacity: 0.3
-          }}
-          onEachFeature={(feature, layer) => {
-            console.log('✅ Zone verdi renderizzate');
-          }}
-        />
-      )}
-
-      {/* Zone parzialmente coperte (giallo) */}
-      {partialCoverage && (
-        <GeoJSON
-          key={`partial-${stations.length}-${Date.now()}`}
-          data={partialCoverage}
-          style={{
-            color: '#ffcc00',
-            weight: 1,
-            opacity: 0.6,
-            fillColor: '#ffcc00',
-            fillOpacity: 0.25
-          }}
-          onEachFeature={(feature, layer) => {
-            console.log('✅ Zone gialle renderizzate');
-          }}
-        />
-      )}
-
-      {/* Zone scoperte (rosso) */}
-      {uncoveredArea && (
-        <GeoJSON
-          key={`uncovered-${stations.length}-${Date.now()}`}
-          data={uncoveredArea}
-          style={{
-            color: '#ff0000',
-            weight: 1,
-            opacity: 0.6,
-            fillColor: '#ff0000',
-            fillOpacity: 0.2
-          }}
-          onEachFeature={(feature, layer) => {
-            console.log('✅ Zone rosse renderizzate');
+            console.log('✅ Perimetro città renderizzato (in primo piano)');
+            // Porta il layer in primo piano
+            if (layer && (layer as any).bringToFront) {
+              (layer as any).bringToFront();
+            }
           }}
         />
       )}
