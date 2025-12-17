@@ -391,59 +391,107 @@ export default function Map() {
 
   return (
     <div className="h-screen w-full relative">
-      {/* DEBUG INFO - rimuovi dopo aver risolto */}
-      <div className="absolute top-20 left-4 z-[1000] bg-yellow-100 rounded-lg shadow-lg px-3 py-2 text-xs max-w-xs">
-        <div><strong>Debug:</strong></div>
-        <div>{debugInfo}</div>
-        <div>Città selezionata: {selectedCity || 'nessuna'}</div>
-        <div>Poligono caricato: {currentCityPolygon ? '✅ Sì' : '❌ No'}</div>
-        <div>Città disponibili: {Object.keys(cityBoundaries).join(', ') || 'nessuna'}</div>
-      </div>
-
       {/* Toggle Copertura territorio */}
-      <div className="absolute top-4 left-4 z-[1000] bg-white rounded-2xl shadow-lg px-4 py-3 text-sm">
-        <label
-          className={`flex items-center gap-2 select-none ${
-            !currentCityPolygon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-          }`}
+      <div 
+        className="absolute top-4 left-4 z-[1000] rounded-2xl shadow-lg overflow-hidden"
+        style={{ 
+          backgroundColor: 'white',
+          border: `3px solid ${colors.city_border}`
+        }}
+      >
+        {/* Header con checkbox */}
+        <div 
+          className="px-4 py-3"
+          style={{ 
+            backgroundColor: colors.city_border,
+            borderBottom: `2px solid ${colors.city_border}`
+          }}
         >
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            checked={showCoverage}
-            disabled={!currentCityPolygon}
-            onChange={(e) => {
-              console.log('📍 Checkbox cliccato:', e.target.checked);
-              setShowCoverage(e.target.checked);
-            }}
-          />
-          <span className="font-medium">
-            Copertura territorio
-            {!currentCityPolygon && ' (seleziona una città)'}
-          </span>
-        </label>
+          <label
+            className={`flex items-center gap-3 select-none ${
+              !currentCityPolygon ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+            }`}
+          >
+            <input
+              type="checkbox"
+              className="h-5 w-5 cursor-pointer accent-white"
+              checked={showCoverage}
+              disabled={!currentCityPolygon}
+              onChange={(e) => setShowCoverage(e.target.checked)}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🗺️</span>
+              <span className="font-bold text-white text-base">
+                Copertura Territorio
+              </span>
+            </div>
+          </label>
+          {!currentCityPolygon && (
+            <div className="text-xs text-white opacity-80 mt-1 ml-8">
+              Seleziona una città per attivare
+            </div>
+          )}
+        </div>
 
-        <div className="mt-2 text-xs space-y-1">
-          <div className="flex items-center gap-1">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: '#00aa00' }}
+        {/* Legenda */}
+        <div className="px-4 py-3 space-y-2 bg-white">
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-6 h-6 rounded-md shadow-sm border-2"
+              style={{ 
+                backgroundColor: '#00aa00',
+                borderColor: '#008800'
+              }}
             />
-            <span>Ben coperta (&lt; 500 m)</span>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-800">Ben coperta</div>
+              <div className="text-xs text-gray-500">&lt; 500 m da colonnina</div>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: '#ffcc00' }}
+          
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-6 h-6 rounded-md shadow-sm border-2"
+              style={{ 
+                backgroundColor: '#ffcc00',
+                borderColor: '#dda000'
+              }}
             />
-            <span>Parziale (0.5–2 km)</span>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-800">Parzialmente coperta</div>
+              <div className="text-xs text-gray-500">0.5 – 2 km</div>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: '#ff0000' }}
+          
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-6 h-6 rounded-md shadow-sm border-2"
+              style={{ 
+                backgroundColor: '#ff0000',
+                borderColor: '#cc0000'
+              }}
             />
-            <span>Scoperta (&gt; 2 km)</span>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-800">Area scoperta</div>
+              <div className="text-xs text-gray-500">&gt; 2 km</div>
+            </div>
+          </div>
+
+          <div className="pt-2 mt-2 border-t border-gray-200">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-6 h-6 rounded-md border-2"
+                style={{ 
+                  backgroundColor: 'transparent',
+                  borderColor: colors.city_border,
+                  borderStyle: 'dashed'
+                }}
+              />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-gray-800">Perimetro città</div>
+                <div className="text-xs text-gray-500">Confine amministrativo</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
