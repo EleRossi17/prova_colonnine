@@ -111,38 +111,40 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
         }}
       >
         <div
-          className="rounded-2xl shadow-lg overflow-hidden"
+          className="flex flex-col items-center gap-2"
           style={{
-            backgroundColor: 'white',
-            border: `3px solid ${colors.city_border}`,
-            padding: '12px',
             transform: isHovering && !isDragging ? 'scale(1.1)' : 'scale(1)',
             transition: 'transform 0.2s ease'
           }}
         >
-          <div className="flex flex-col items-center gap-2">
-            {/* Icona omino */}
-            <div
-              style={{
-                fontSize: '48px',
-                lineHeight: 1,
-                userSelect: 'none'
-              }}
+          {/* Icona omino - SOLO SAGOMA */}
+          <div
+            style={{
+              fontSize: '56px',
+              lineHeight: 1,
+              userSelect: 'none',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+            }}
+          >
+            🚶
+          </div>
+          
+          {/* Testo sotto */}
+          <div 
+            className="text-center px-3 py-1 rounded-lg shadow-md"
+            style={{
+              backgroundColor: 'white',
+              border: `2px solid ${colors.city_border}`
+            }}
+          >
+            <div 
+              className="text-xs font-bold"
+              style={{ color: colors.city_border }}
             >
-              🚶
+              Google Maps
             </div>
-            
-            {/* Testo */}
-            <div className="text-center">
-              <div 
-                className="text-xs font-bold"
-                style={{ color: colors.city_border }}
-              >
-                Google Maps
-              </div>
-              <div className="text-[10px] text-gray-500 whitespace-nowrap">
-                Trascina sulla mappa
-              </div>
+            <div className="text-[10px] text-gray-500 whitespace-nowrap">
+              Trascina qui
             </div>
           </div>
         </div>
@@ -150,20 +152,70 @@ export default function GoogleMapsPinControl({ colors }: GoogleMapsPinControlPro
 
       {/* Omino che segue il cursore durante il drag */}
       {isDragging && dragPosition && (
-        <div
-          style={{
-            position: 'fixed',
-            left: dragPosition.x - 30,
-            top: dragPosition.y - 60,
-            zIndex: 9999,
-            pointerEvents: 'none',
-            fontSize: '60px',
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-            animation: 'bounce 0.5s ease infinite'
-          }}
-        >
-          🚶
-        </div>
+        <>
+          {/* Omino animato */}
+          <div
+            style={{
+              position: 'fixed',
+              left: dragPosition.x - 28,
+              top: dragPosition.y - 56,
+              zIndex: 9999,
+              pointerEvents: 'none',
+              fontSize: '56px',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.4))',
+              animation: 'bounce 0.5s ease infinite'
+            }}
+          >
+            🚶
+          </div>
+          
+          {/* Mirino di precisione */}
+          <div
+            style={{
+              position: 'fixed',
+              left: dragPosition.x - 20,
+              top: dragPosition.y - 20,
+              zIndex: 9998,
+              pointerEvents: 'none',
+              width: '40px',
+              height: '40px',
+              border: `3px solid ${colors.city_border}`,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(46, 134, 171, 0.2)',
+              boxShadow: '0 0 0 2px white, 0 0 12px rgba(46, 134, 171, 0.5)'
+            }}
+          >
+            {/* Croce centrale del mirino */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '20px',
+                height: '20px',
+                borderTop: `2px solid ${colors.city_border}`,
+                borderLeft: `2px solid ${colors.city_border}`,
+                borderRight: `2px solid ${colors.city_border}`,
+                borderBottom: `2px solid ${colors.city_border}`,
+              }}
+            />
+            {/* Punto centrale */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: colors.city_border,
+                boxShadow: `0 0 4px ${colors.city_border}`
+              }}
+            />
+          </div>
+        </>
       )}
 
       {/* Target zone indicator durante drag */}
