@@ -78,6 +78,16 @@ export default function Map() {
     []
   );
 
+  // 🆕 Colori per la copertura territorio (evitando semaforo)
+  const coverageColors = useMemo(
+    () => ({
+      excellent: '#4A90E2',  // Blu - ottima copertura
+      good: '#7B68EE',       // Viola - buona copertura  
+      poor: '#FFA07A'        // Arancione chiaro - scarsa copertura
+    }),
+    []
+  );
+
   // Load Leaflet CSS and library
   useEffect(() => {
     import('leaflet').then((L) => {
@@ -393,23 +403,25 @@ export default function Map() {
     <div className="h-screen w-full relative">
       {/* Toggle Copertura territorio */}
       <div 
-        className="absolute top-4 left-4 z-[1000] rounded-2xl shadow-lg overflow-hidden"
+        className="absolute top-4 left-4 z-[1000] rounded-xl shadow-lg overflow-hidden transition-all duration-300"
         style={{ 
-          backgroundColor: 'white',
-          border: `3px solid ${colors.city_border}`
+          width: '340px',
+          backgroundColor: currentCityPolygon ? 'white' : '#e5e7eb',
+          border: `3px solid ${currentCityPolygon ? colors.city_border : '#9ca3af'}`,
+          opacity: currentCityPolygon ? 1 : 0.6
         }}
       >
         {/* Header con checkbox */}
         <div 
-          className="px-4 py-3"
+          className="px-5 py-4 transition-colors duration-300"
           style={{ 
-            backgroundColor: colors.city_border,
-            borderBottom: `2px solid ${colors.city_border}`
+            backgroundColor: currentCityPolygon ? colors.city_border : '#9ca3af',
+            borderBottom: `2px solid ${currentCityPolygon ? colors.city_border : '#9ca3af'}`
           }}
         >
           <label
             className={`flex items-center gap-3 select-none ${
-              !currentCityPolygon ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+              !currentCityPolygon ? 'cursor-not-allowed' : 'cursor-pointer'
             }`}
           >
             <input
@@ -420,76 +432,97 @@ export default function Map() {
               onChange={(e) => setShowCoverage(e.target.checked)}
             />
             <div className="flex items-center gap-2">
-              <span className="text-xl">🗺️</span>
+              <span className="text-xl">{currentCityPolygon ? '🗺️' : '🔒'}</span>
               <span className="font-bold text-white text-base">
                 Copertura Territorio
               </span>
             </div>
           </label>
           {!currentCityPolygon && (
-            <div className="text-xs text-white opacity-80 mt-1 ml-8">
-              Seleziona una città per attivare
+            <div className="text-xs text-white font-medium mt-2 ml-8 bg-black bg-opacity-20 px-2 py-1 rounded">
+              ⚠️ Seleziona una città per attivare
             </div>
           )}
         </div>
 
         {/* Legenda */}
-        <div className="px-4 py-3 space-y-2 bg-white">
+        <div 
+          className="px-5 py-4 space-y-3 transition-colors duration-300"
+          style={{
+            backgroundColor: currentCityPolygon ? 'white' : '#f3f4f6'
+          }}
+        >
           <div className="flex items-center gap-3">
             <div 
-              className="w-6 h-6 rounded-md shadow-sm border-2"
+              className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
               style={{ 
-                backgroundColor: '#00aa00',
-                borderColor: '#008800'
+                backgroundColor: currentCityPolygon ? coverageColors.excellent : '#d1d5db',
+                borderColor: currentCityPolygon ? '#3A7BC8' : '#9ca3af'
               }}
             />
             <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-800">Ben coperta</div>
-              <div className="text-xs text-gray-500">&lt; 500 m da colonnina</div>
+              <div className={`text-sm font-semibold ${currentCityPolygon ? 'text-gray-800' : 'text-gray-500'}`}>
+                Ottima copertura
+              </div>
+              <div className={`text-xs ${currentCityPolygon ? 'text-gray-500' : 'text-gray-400'}`}>
+                &lt; 500 m da colonnina
+              </div>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
             <div 
-              className="w-6 h-6 rounded-md shadow-sm border-2"
+              className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
               style={{ 
-                backgroundColor: '#ffcc00',
-                borderColor: '#dda000'
+                backgroundColor: currentCityPolygon ? coverageColors.good : '#d1d5db',
+                borderColor: currentCityPolygon ? '#6B58CE' : '#9ca3af'
               }}
             />
             <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-800">Parzialmente coperta</div>
-              <div className="text-xs text-gray-500">0.5 – 2 km</div>
+              <div className={`text-sm font-semibold ${currentCityPolygon ? 'text-gray-800' : 'text-gray-500'}`}>
+                Buona copertura
+              </div>
+              <div className={`text-xs ${currentCityPolygon ? 'text-gray-500' : 'text-gray-400'}`}>
+                0.5 – 2 km
+              </div>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
             <div 
-              className="w-6 h-6 rounded-md shadow-sm border-2"
+              className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
               style={{ 
-                backgroundColor: '#ff0000',
-                borderColor: '#cc0000'
+                backgroundColor: currentCityPolygon ? coverageColors.poor : '#d1d5db',
+                borderColor: currentCityPolygon ? '#FF8C5A' : '#9ca3af'
               }}
             />
             <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-800">Area scoperta</div>
-              <div className="text-xs text-gray-500">&gt; 2 km</div>
+              <div className={`text-sm font-semibold ${currentCityPolygon ? 'text-gray-800' : 'text-gray-500'}`}>
+                Scarsa copertura
+              </div>
+              <div className={`text-xs ${currentCityPolygon ? 'text-gray-500' : 'text-gray-400'}`}>
+                &gt; 2 km
+              </div>
             </div>
           </div>
 
-          <div className="pt-2 mt-2 border-t border-gray-200">
+          <div className={`pt-3 mt-3 ${currentCityPolygon ? 'border-gray-200' : 'border-gray-300'}`} style={{ borderTop: '1px solid' }}>
             <div className="flex items-center gap-3">
               <div 
-                className="w-6 h-6 rounded-md border-2"
+                className="w-8 h-8 rounded-lg border-2 flex-shrink-0"
                 style={{ 
                   backgroundColor: 'transparent',
-                  borderColor: colors.city_border,
+                  borderColor: currentCityPolygon ? colors.city_border : '#9ca3af',
                   borderStyle: 'dashed'
                 }}
               />
               <div className="flex-1">
-                <div className="text-sm font-semibold text-gray-800">Perimetro città</div>
-                <div className="text-xs text-gray-500">Confine amministrativo</div>
+                <div className={`text-sm font-semibold ${currentCityPolygon ? 'text-gray-800' : 'text-gray-500'}`}>
+                  Perimetro città
+                </div>
+                <div className={`text-xs ${currentCityPolygon ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Confine amministrativo
+                </div>
               </div>
             </div>
           </div>
@@ -519,6 +552,7 @@ export default function Map() {
             <CoverageLayer
               stations={filteredStations}
               cityPolygon={currentCityPolygon}
+              colors={coverageColors}
             />
           </>
         )}
