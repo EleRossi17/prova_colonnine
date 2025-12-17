@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import * as turf from '@turf/turf'; // 🆕 per gestire i poligoni e le distanze
+import * as turf from '@turf/turf';
 import { ChargingStation, MarkerClusterColors } from '@/app/types/charging-station';
 import { ChargingStationService } from '@/app/services/chargingStationService';
 
