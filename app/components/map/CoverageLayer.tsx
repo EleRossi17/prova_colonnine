@@ -1,12 +1,10 @@
 'use client';
-
 import { useEffect, useMemo } from 'react';
 import { GeoJSON, useMap } from 'react-leaflet';
 // @ts-ignore
 import * as turf from '@turf/turf';
 import { ChargingStation } from '@/app/types/charging-station';
 import type { Feature, Polygon, MultiPolygon } from 'geojson';
-
 type CoverageLayerProps = {
   stations: ChargingStation[];
   cityPolygon: Feature<Polygon | MultiPolygon>;
@@ -16,7 +14,6 @@ type CoverageLayerProps = {
     poor: string;
   };
 };
-
 export default function CoverageLayer({ stations, cityPolygon, colors }: CoverageLayerProps) {
   const map = useMap();
 
