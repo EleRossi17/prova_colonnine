@@ -534,7 +534,7 @@ export default function Map() {
         center={mapCenter}
         zoom={mapZoom}
         className="h-full w-full"
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         dragging={true}
         touchZoom={true}
