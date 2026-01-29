@@ -39,6 +39,9 @@ const AddStationControl = dynamic(() => import('./map/AddStationControl'), { ssr
 const ChargingStationForm = dynamic(() => import('./map/ChargingStationForm'), { ssr: false });
 const GoogleMapsPinControl = dynamic(() => import('./map/GoogleMapsPinControl'), { ssr: false });
 
+// ✅ NEW: Info parametri modello
+const ModelParamsControl = dynamic(() => import('./map/ModelParamsControl'), { ssr: false });
+
 // Layer della copertura territorio
 const CoverageLayer = dynamic(() => import('./map/CoverageLayer'), { ssr: false });
 
@@ -82,9 +85,9 @@ export default function Map() {
   // 🆕 Colori per la copertura territorio (evitando semaforo)
   const coverageColors = useMemo(
     () => ({
-      excellent: '#10B981',  // Verde smeraldo - ottima copertura
-      good: '#8B5CF6',       // Viola intenso - buona copertura  
-      poor: '#F59E0B'        // Ambra/arancione - scarsa copertura
+      excellent: '#10B981', // Verde smeraldo - ottima copertura
+      good: '#8B5CF6', // Viola intenso - buona copertura
+      poor: '#F59E0B', // Ambra/arancione - scarsa copertura
     }),
     []
   );
@@ -120,13 +123,13 @@ export default function Map() {
       try {
         setDebugInfo('🔄 Caricamento city_boundaries.json...');
         const res = await fetch('/city_boundaries.json');
-        
+
         if (!res.ok) {
           setDebugInfo(`❌ File non trovato (status ${res.status})`);
           console.warn('city_boundaries.json non trovato o non accessibile');
           return;
         }
-        
+
         const data = await res.json();
         console.log('✅ City boundaries caricati:', Object.keys(data));
         setCityBoundaries(data);
@@ -283,9 +286,7 @@ export default function Map() {
 
   // Fix for undefined city values
   const availableCities = useMemo(() => {
-    const cities = new Set(
-      chargingStations.map((station) => station.city).filter((c): c is string => Boolean(c))
-    );
+    const cities = new Set(chargingStations.map((station) => station.city).filter((c): c is string => Boolean(c)));
     return Array.from(cities).sort();
   }, [chargingStations]);
 
@@ -334,9 +335,9 @@ export default function Map() {
       console.log('⚠️ Nessuna città selezionata');
       return null;
     }
-    
+
     const cityData = cityBoundaries[selectedCity];
-    
+
     if (!cityData) {
       console.log(`⚠️ Poligono non trovato per città: ${selectedCity}`);
       console.log('Città disponibili:', Object.keys(cityBoundaries));
@@ -344,12 +345,12 @@ export default function Map() {
     }
 
     console.log(`✅ Poligono trovato per ${selectedCity}`, cityData);
-    
+
     // La struttura è già un Feature completo, restituiscilo direttamente
     if (cityData.type === 'Feature' && cityData.geometry) {
       return cityData as turf.helpers.Feature<turf.helpers.Polygon | turf.helpers.MultiPolygon>;
     }
-    
+
     // Fallback se ha solo la geometria
     const geometry = cityData.geometry || cityData;
     return turf.feature(geometry) as turf.helpers.Feature<turf.helpers.Polygon | turf.helpers.MultiPolygon>;
@@ -403,27 +404,25 @@ export default function Map() {
   return (
     <div className="h-screen w-full relative">
       {/* Toggle Copertura territorio */}
-      <div 
+      <div
         className="absolute top-4 left-4 z-[1000] rounded-xl shadow-lg overflow-hidden transition-all duration-300"
-        style={{ 
+        style={{
           width: '340px',
           backgroundColor: currentCityPolygon ? 'white' : '#e5e7eb',
           border: `3px solid ${currentCityPolygon ? colors.city_border : '#9ca3af'}`,
-          opacity: currentCityPolygon ? 1 : 0.6
+          opacity: currentCityPolygon ? 1 : 0.6,
         }}
       >
         {/* Header con checkbox */}
-        <div 
+        <div
           className="px-5 py-4 transition-colors duration-300"
-          style={{ 
+          style={{
             backgroundColor: currentCityPolygon ? colors.city_border : '#9ca3af',
-            borderBottom: `2px solid ${currentCityPolygon ? colors.city_border : '#9ca3af'}`
+            borderBottom: `2px solid ${currentCityPolygon ? colors.city_border : '#9ca3af'}`,
           }}
         >
           <label
-            className={`flex items-center gap-3 select-none ${
-              !currentCityPolygon ? 'cursor-not-allowed' : 'cursor-pointer'
-            }`}
+            className={`flex items-center gap-3 select-none ${!currentCityPolygon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           >
             <input
               type="checkbox"
@@ -434,9 +433,7 @@ export default function Map() {
             />
             <div className="flex items-center gap-2">
               <span className="text-xl">{currentCityPolygon ? '🗺️' : '🔒'}</span>
-              <span className="font-bold text-white text-base">
-                Copertura Territorio
-              </span>
+              <span className="font-bold text-white text-base">Copertura Territorio</span>
             </div>
           </label>
           {!currentCityPolygon && (
@@ -447,18 +444,18 @@ export default function Map() {
         </div>
 
         {/* Legenda */}
-        <div 
+        <div
           className="px-5 py-4 space-y-3 transition-colors duration-300"
           style={{
-            backgroundColor: currentCityPolygon ? 'white' : '#f3f4f6'
+            backgroundColor: currentCityPolygon ? 'white' : '#f3f4f6',
           }}
         >
           <div className="flex items-center gap-3">
-            <div 
+            <div
               className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
-              style={{ 
+              style={{
                 backgroundColor: currentCityPolygon ? coverageColors.excellent : '#d1d5db',
-                borderColor: currentCityPolygon ? '#059669' : '#9ca3af'
+                borderColor: currentCityPolygon ? '#059669' : '#9ca3af',
               }}
             />
             <div className="flex-1">
@@ -470,13 +467,13 @@ export default function Map() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <div 
+            <div
               className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
-              style={{ 
+              style={{
                 backgroundColor: currentCityPolygon ? coverageColors.good : '#d1d5db',
-                borderColor: currentCityPolygon ? '#7C3AED' : '#9ca3af'
+                borderColor: currentCityPolygon ? '#7C3AED' : '#9ca3af',
               }}
             />
             <div className="flex-1">
@@ -488,13 +485,13 @@ export default function Map() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <div 
+            <div
               className="w-8 h-8 rounded-lg shadow-sm border-2 flex-shrink-0"
-              style={{ 
+              style={{
                 backgroundColor: currentCityPolygon ? coverageColors.poor : '#d1d5db',
-                borderColor: currentCityPolygon ? '#D97706' : '#9ca3af'
+                borderColor: currentCityPolygon ? '#D97706' : '#9ca3af',
               }}
             />
             <div className="flex-1">
@@ -507,14 +504,17 @@ export default function Map() {
             </div>
           </div>
 
-          <div className={`pt-3 mt-3 ${currentCityPolygon ? 'border-gray-200' : 'border-gray-300'}`} style={{ borderTop: '1px solid' }}>
+          <div
+            className={`pt-3 mt-3 ${currentCityPolygon ? 'border-gray-200' : 'border-gray-300'}`}
+            style={{ borderTop: '1px solid' }}
+          >
             <div className="flex items-center gap-3">
-              <div 
+              <div
                 className="w-8 h-8 rounded-lg border-2 flex-shrink-0"
-                style={{ 
+                style={{
                   backgroundColor: 'transparent',
                   borderColor: currentCityPolygon ? colors.city_border : '#9ca3af',
-                  borderStyle: 'dashed'
+                  borderStyle: 'dashed',
                 }}
               />
               <div className="flex-1">
@@ -550,11 +550,7 @@ export default function Map() {
         {showCoverage && currentCityPolygon && (
           <>
             {console.log('🗺️ Renderizzando CoverageLayer con', filteredStations.length, 'stazioni')}
-            <CoverageLayer
-              stations={filteredStations}
-              cityPolygon={currentCityPolygon}
-              colors={coverageColors}
-            />
+            <CoverageLayer stations={filteredStations} cityPolygon={currentCityPolygon} colors={coverageColors} />
           </>
         )}
 
@@ -579,6 +575,16 @@ export default function Map() {
 
         {/* Google Maps Pin - SEMPRE VISIBILE */}
         <GoogleMapsPinControl colors={colors} />
+
+        {/* ✅ NEW: Info parametri modello - SEMPRE VISIBILE */}
+        <ModelParamsControl
+          colors={colors}
+          params={{
+            avgConsumptionKwhKm: 0.2,
+            evCagrPct: 29,
+            publicChargingSharePct: 50,
+          }}
+        />
 
         {/* Controls for large screen */}
         {isLargeScreen && (
