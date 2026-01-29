@@ -1,21 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import type { MarkerClusterColors } from '@/app/types/charging-station';
 
 type ModelParams = {
-  avgConsumptionKwhKm: number; // kWh/km
-  evCagrPct: number;           // %
-  publicChargingSharePct: number; // %
-};
-
-const DEFAULT_PARAMS: ModelParams = {
-  avgConsumptionKwhKm: 0.2,
-  evCagrPct: 29,
-  publicChargingSharePct: 50,
+  avgConsumptionKwhKm: number;      // kWh/km
+  evCagrPct: number;               // %
+  publicChargingSharePct: number;   // %
 };
 
 export default function ModelParamsControl({
-  params = DEFAULT_PARAMS,
+  colors,
+  params,
 }: {
-  params?: ModelParams;
+  colors: MarkerClusterColors;
+  params: ModelParams;
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -23,10 +22,10 @@ export default function ModelParamsControl({
   // Chiudi con ESC
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === 'Escape') setOpen(false);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   // Chiudi cliccando fuori
@@ -34,122 +33,115 @@ export default function ModelParamsControl({
     const onClick = (e: MouseEvent) => {
       if (!open) return;
       const target = e.target as Node;
-      if (panelRef.current && !panelRef.current.contains(target)) {
-        setOpen(false);
-      }
+      if (panelRef.current && !panelRef.current.contains(target)) setOpen(false);
     };
-    window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
+    window.addEventListener('mousedown', onClick);
+    return () => window.removeEventListener('mousedown', onClick);
   }, [open]);
 
   return (
-    <div style={{ position: "relative" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Info parametri modello"
-        title="Info parametri modello"
-        style={styles.circleButton}
-      >
-        <span style={{ fontSize: 18, lineHeight: 1 }}>ℹ️</span>
-      </button>
+    <div className="leaflet-top leaflet-right">
+      <div className="leaflet-control" style={{ marginTop: 12 }}>
+        <div style={{ position: 'relative' }}>
+          {/* Bottone rotondo */}
+          <button
+            type="button"
+            aria-label="Info parametri modello"
+            title="Info parametri modello"
+            onClick={() => setOpen((v) => !v)}
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: 999,
+              border: `3px solid ${colors.city_border}`,
+              background: 'white',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+              cursor: 'pointer',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>ℹ️</span>
+          </button>
 
-      {open && (
-        <div ref={panelRef} style={styles.panel}>
-          <div style={styles.panelHeader}>
-            <div style={{ fontWeight: 700 }}>Parametri modello</div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Chiudi"
-              style={styles.closeButton}
+          {/* Pannello */}
+          {open && (
+            <div
+              ref={panelRef}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 62,
+                width: 340,
+                background: 'white',
+                border: '1px solid rgba(0,0,0,0.12)',
+                borderRadius: 14,
+                boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+                overflow: 'hidden',
+                zIndex: 9999,
+              }}
             >
-              ✕
-            </button>
-          </div>
+              <div
+                style={{
+                  background: colors.city_border,
+                  color: 'white',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div style={{ fontWeight: 800 }}>Parametri modello</div>
+                <button
+                  type="button"
+                  aria-label="Chiudi"
+                  onClick={() => setOpen(false)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    lineHeight: 1,
+                    padding: 6,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
 
-          <div style={styles.row}>
-            <div style={styles.label}>Consumo medio auto elettrica</div>
-            <div style={styles.value}>{params.avgConsumptionKwhKm} kWh/km</div>
-          </div>
+              <div style={{ padding: 14 }}>
+                <Row label="Consumo medio auto elettrica" value={`${params.avgConsumptionKwhKm} kWh/km`} />
+                <Row label="CAGR crescita veicoli elettrici" value={`${params.evCagrPct}%`} />
+                <Row label="% ricarica pubblica" value={`${params.publicChargingSharePct}%`} />
 
-          <div style={styles.row}>
-            <div style={styles.label}>CAGR crescita veicoli elettrici</div>
-            <div style={styles.value}>{params.evCagrPct}%</div>
-          </div>
-
-          <div style={styles.row}>
-            <div style={styles.label}>% ricarica pubblica</div>
-            <div style={styles.value}>{params.publicChargingSharePct}%</div>
-          </div>
-
-          <div style={styles.note}>
-            (Valori utilizzati dal modello per gli scenari.)
-          </div>
+                <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(0,0,0,0.55)' }}>
+                  (Valori utilizzati dal modello per gli scenari.)
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  circleButton: {
-    width: 54,
-    height: 54,
-    borderRadius: "999px",
-    border: "3px solid #2F6FA3",
-    background: "#FFFFFF",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
-    cursor: "pointer",
-    display: "grid",
-    placeItems: "center",
-  },
-  panel: {
-    position: "absolute",
-    right: 0,
-    top: 62,
-    width: 320,
-    background: "#FFFFFF",
-    border: "1px solid rgba(0,0,0,0.12)",
-    borderRadius: 14,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.18)",
-    padding: 14,
-    zIndex: 9999,
-  },
-  panelHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  closeButton: {
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-    fontSize: 16,
-    lineHeight: 1,
-    padding: 6,
-  },
-  row: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    padding: "8px 0",
-    borderTop: "1px solid rgba(0,0,0,0.06)",
-  },
-  label: {
-    fontSize: 13,
-    color: "rgba(0,0,0,0.70)",
-  },
-  value: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: "rgba(0,0,0,0.90)",
-    whiteSpace: "nowrap",
-  },
-  note: {
-    marginTop: 10,
-    fontSize: 12,
-    color: "rgba(0,0,0,0.55)",
-  },
-};
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '8px 0',
+        borderTop: '1px solid rgba(0,0,0,0.06)',
+      }}
+    >
+      <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.70)' }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(0,0,0,0.90)', whiteSpace: 'nowrap' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
