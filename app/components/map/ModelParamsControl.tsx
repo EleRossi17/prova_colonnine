@@ -1,147 +1,193 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMap } from 'react-leaflet';
+import { Control, DomEvent } from 'leaflet';
 import type { MarkerClusterColors } from '@/app/types/charging-station';
 
 type ModelParams = {
   avgConsumptionKwhKm: number;      // kWh/km
   evCagrPct: number;               // %
-  publicChargingSharePct: number;   // %
+  publicChargingSharePct: number;  // %
 };
 
-export default function ModelParamsControl({
-  colors,
-  params,
-}: {
+interface ModelParamsControlProps {
   colors: MarkerClusterColors;
   params: ModelParams;
-}) {
-  const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-
-  // Chiudi con ESC
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  // Chiudi cliccando fuori
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (!open) return;
-      const target = e.target as Node;
-      if (panelRef.current && !panelRef.current.contains(target)) setOpen(false);
-    };
-    window.addEventListener('mousedown', onClick);
-    return () => window.removeEventListener('mousedown', onClick);
-  }, [open]);
-
-  return (
-    <div className="leaflet-top leaflet-right">
-      <div className="leaflet-control" style={{ marginTop: 12 }}>
-        <div style={{ position: 'relative' }}>
-          {/* Bottone rotondo */}
-          <button
-            type="button"
-            aria-label="Info parametri modello"
-            title="Info parametri modello"
-            onClick={() => setOpen((v) => !v)}
-            style={{
-              width: 54,
-              height: 54,
-              borderRadius: 999,
-              border: `3px solid ${colors.city_border}`,
-              background: 'white',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
-              cursor: 'pointer',
-              display: 'grid',
-              placeItems: 'center',
-            }}
-          >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>ℹ️</span>
-          </button>
-
-          {/* Pannello */}
-          {open && (
-            <div
-              ref={panelRef}
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: 62,
-                width: 340,
-                background: 'white',
-                border: '1px solid rgba(0,0,0,0.12)',
-                borderRadius: 14,
-                boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
-                overflow: 'hidden',
-                zIndex: 9999,
-              }}
-            >
-              <div
-                style={{
-                  background: colors.city_border,
-                  color: 'white',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ fontWeight: 800 }}>Parametri modello</div>
-                <button
-                  type="button"
-                  aria-label="Chiudi"
-                  onClick={() => setOpen(false)}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'white',
-                    cursor: 'pointer',
-                    fontSize: 16,
-                    lineHeight: 1,
-                    padding: 6,
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div style={{ padding: 14 }}>
-                <Row label="Consumo medio auto elettrica" value={`${params.avgConsumptionKwhKm} kWh/km`} />
-                <Row label="CAGR crescita veicoli elettrici" value={`${params.evCagrPct}%`} />
-                <Row label="% ricarica pubblica" value={`${params.publicChargingSharePct}%`} />
-
-                <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(0,0,0,0.55)' }}>
-                  (Valori utilizzati dal modello per gli scenari.)
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: 12,
-        padding: '8px 0',
-        borderTop: '1px solid rgba(0,0,0,0.06)',
-      }}
-    >
-      <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.70)' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(0,0,0,0.90)', whiteSpace: 'nowrap' }}>
-        {value}
-      </div>
-    </div>
-  );
+export default function ModelParamsControl({ colors, params }: ModelParamsControlProps) {
+  const map = useMap();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    const infoControl = new Control({ position: 'topright' });
+
+    infoControl.onAdd = () => {
+      const div = document.createElement('div');
+      div.style.backgroundColor = 'transparent';
+      div.style.border = 'none';
+
+      if (isExpanded) {
+        div.innerHTML = `
+          <div style="
+            background: rgba(255, 255, 255, 0.98);
+            border: 2px solid ${colors.city_border};
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 13px;
+            min-width: 260px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(10px);
+            animation: slideInInfo 0.3s ease-out;
+            z-index: 996;
+            position: relative;
+          ">
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+              padding-bottom: 8px;
+              border-bottom: 2px solid ${colors.city_border}30;
+            ">
+              <h4 style="
+                margin: 0;
+                color: ${colors.city_border};
+                font-size: 16px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+              ">
+                ℹ️ Parametri modello
+              </h4>
+              <button id="collapse-info-btn" style="
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                color: #6c757d;
+                cursor: pointer;
+                transition: all 0.2s ease;
+              ">
+                ✕
+              </button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid rgba(0,0,0,0.06);">
+              <div style="color: rgba(0,0,0,0.70);">Consumo medio auto elettrica</div>
+              <div style="font-weight:700; color: rgba(0,0,0,0.90); white-space:nowrap;">
+                ${params.avgConsumptionKwhKm} kWh/km
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid rgba(0,0,0,0.06);">
+              <div style="color: rgba(0,0,0,0.70);">CAGR crescita veicoli elettrici</div>
+              <div style="font-weight:700; color: rgba(0,0,0,0.90); white-space:nowrap;">
+                ${params.evCagrPct}%
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid rgba(0,0,0,0.06);">
+              <div style="color: rgba(0,0,0,0.70);">% ricarica pubblica</div>
+              <div style="font-weight:700; color: rgba(0,0,0,0.90); white-space:nowrap;">
+                ${params.publicChargingSharePct}%
+              </div>
+            </div>
+
+            <div style="margin-top: 10px; font-size: 12px; color: rgba(0,0,0,0.55);">
+              (Valori utilizzati dal modello per gli scenari.)
+            </div>
+          </div>
+
+          <style>
+            @keyframes slideInInfo {
+              from { opacity: 0; transform: translateX(20px) scale(0.9); }
+              to   { opacity: 1; transform: translateX(0) scale(1); }
+            }
+          </style>
+        `;
+      } else {
+        // Collapsed state: stesso stile/dimensioni di AddStationControl (48x48)
+        div.innerHTML = `
+          <div id="expand-info-btn" style="
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid ${colors.city_border};
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            cursor: pointer;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 995;
+          " title="Parametri modello">
+            <div style="
+              color: ${colors.city_border};
+              font-size: 20px;
+              font-weight: 600;
+              transition: transform 0.2s ease;
+            ">ℹ️</div>
+          </div>
+
+          <style>
+            #expand-info-btn:hover {
+              transform: scale(1.05) !important;
+              box-shadow: 0 6px 20px rgba(0,0,0,0.2) !important;
+              border-color: ${colors.city_border + 'dd'} !important;
+            }
+            #expand-info-btn:hover div:first-child {
+              transform: scale(1.1) !important;
+            }
+          </style>
+        `;
+      }
+
+      // Prevent map interactions
+      DomEvent.disableClickPropagation(div);
+      DomEvent.disableScrollPropagation(div);
+
+      // Add event listeners
+      if (isExpanded) {
+        const collapseBtn = div.querySelector('#collapse-info-btn') as HTMLButtonElement | null;
+        if (collapseBtn) {
+          collapseBtn.onclick = (e) => {
+            e.stopPropagation();
+            setIsExpanded(false);
+          };
+        }
+      } else {
+        const expandBtn = div.querySelector('#expand-info-btn') as HTMLDivElement | null;
+        if (expandBtn) {
+          expandBtn.onclick = (e) => {
+            e.stopPropagation();
+            setIsExpanded(true);
+          };
+        }
+      }
+
+      return div;
+    };
+
+    infoControl.addTo(map);
+
+    return () => {
+      infoControl.remove();
+    };
+  }, [map, colors.city_border, isExpanded, params.avgConsumptionKwhKm, params.evCagrPct, params.publicChargingSharePct]);
+
+  return null;
 }
